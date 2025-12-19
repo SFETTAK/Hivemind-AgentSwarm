@@ -2,6 +2,8 @@
 
 Hivemind uses tmux for agent session management, which requires a Linux environment. On Windows, we use WSL2 (Windows Subsystem for Linux).
 
+![Hivemind Dashboard](../assets/dashboard-preview.png)
+
 ## Prerequisites
 
 - Windows 10 version 2004+ or Windows 11
