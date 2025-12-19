@@ -56,6 +56,30 @@ flowchart TB
 - Aider (`pip install aider-chat`)
 - An LLM API key (OpenRouter recommended)
 
+### Windows Users (WSL2 Required)
+
+Hivemind uses tmux for agent session management, which requires a Linux environment. On Windows, use WSL2:
+
+```powershell
+# 1. Install WSL2 (run in PowerShell as Administrator)
+wsl --install
+
+# 2. Restart your computer, then open Ubuntu from Start Menu
+
+# 3. Inside WSL2, install dependencies
+sudo apt update
+sudo apt install -y tmux nodejs npm python3-pip
+
+# 4. Install aider
+pip install aider-chat
+
+# 5. Continue with Installation steps below (inside WSL2)
+```
+
+> **Tip:** You can access WSL2 files from Windows at `\\wsl$\Ubuntu\home\yourusername\`
+> 
+> **Tip:** Run `code .` inside WSL2 to open VS Code/Cursor with WSL integration
+
 ### Installation
 
 ```bash
