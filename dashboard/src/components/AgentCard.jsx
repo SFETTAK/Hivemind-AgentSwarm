@@ -10,7 +10,7 @@ const statusLabels = {
   stuck: 'STUCK',
 }
 
-export default function AgentCard({ agent, selected, onClick }) {
+export default function AgentCard({ agent, selected, onClick, onDoubleClick }) {
   return (
     <div 
       className={`
@@ -18,6 +18,7 @@ export default function AgentCard({ agent, selected, onClick }) {
         ${selected ? 'border-[#00d4ff] shadow-lg shadow-[#00d4ff]/20' : 'border-[#27272a] hover:border-zinc-600'}
       `}
       onClick={onClick}
+      onDoubleClick={onDoubleClick}
     >
       <div className="flex items-center gap-2 mb-1.5">
         <div 

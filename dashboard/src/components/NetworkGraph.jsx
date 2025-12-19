@@ -1,13 +1,20 @@
-import { useEffect, useRef, useCallback, useState } from 'react'
+import { useEffect, useRef, useCallback, useState, memo } from 'react'
 import { useSwarmStore } from '../stores/swarmStore'
 
-export default function NetworkGraph() {
+function NetworkGraph({ onAgentDoubleClick, onSelectAgent, selectedAgent }) {
   const canvasRef = useRef(null)
   const animationRef = useRef(null)
   const particlesRef = useRef([])
   
-  // Local positions for dragging (overrides server positions)
-  const [nodePositions, setNodePositions] = useState({})
+  // Local positions for dragging (overrides server positions) - persisted to localStorage
+  const [nodePositions, setNodePositions] = useState(() => {
+    try {
+      const saved = localStorage.getItem('hivemind-node-positions')
+      return saved ? JSON.parse(saved) : {}
+    } catch {
+      return {}
+    }
+  })
   const [dragging, setDragging] = useState(null)
   const [dragOffset, setDragOffset] = useState({ x: 0, y: 0 })
   
@@ -19,9 +26,8 @@ export default function NetworkGraph() {
   
   const agents = useSwarmStore(state => state.agents)
   const edges = useSwarmStore(state => state.edges)
-  const selectedAgent = useSwarmStore(state => state.selectedAgent)
-  const setSelectedAgent = useSwarmStore(state => state.setSelectedAgent)
   const loading = useSwarmStore(state => state.loading)
+  // selectedAgent and setSelectedAgent now come from props (onSelectAgent)
   
   // Get position for an agent (local override or server default)
   const getAgentPosition = useCallback((agent) => {
@@ -275,7 +281,7 @@ export default function NetworkGraph() {
       const pos = getAgentPosition(clicked)
       setDragging(clicked.id)
       setDragOffset({ x: pos.x - x, y: pos.y - y })
-      setSelectedAgent(clicked.id)
+      onSelectAgent(clicked.id)
     } else {
       // Start panning
       setIsPanning(true)
@@ -291,10 +297,14 @@ export default function NetworkGraph() {
       const newX = Math.max(0.05, Math.min(0.95, x + dragOffset.x))
       const newY = Math.max(0.05, Math.min(0.95, y + dragOffset.y))
       
-      setNodePositions(prev => ({
-        ...prev,
-        [dragging]: { x: newX, y: newY }
-      }))
+      setNodePositions(prev => {
+        const updated = { ...prev, [dragging]: { x: newX, y: newY } }
+        // Persist to localStorage
+        try {
+          localStorage.setItem('hivemind-node-positions', JSON.stringify(updated))
+        } catch {}
+        return updated
+      })
     } else if (isPanning) {
       // Pan canvas
       setPan({
@@ -340,12 +350,25 @@ export default function NetworkGraph() {
     
     const { x, y } = screenToCanvas(e.clientX, e.clientY)
     const clicked = findAgentAt(x, y)
-    setSelectedAgent(clicked?.id || null)
+    onSelectAgent(clicked?.id || null)
+  }
+  
+  // Handle double-click (open chat window)
+  const handleDoubleClick = (e) => {
+    const { x, y } = screenToCanvas(e.clientX, e.clientY)
+    const clicked = findAgentAt(x, y)
+    if (clicked && onAgentDoubleClick) {
+      // Pass the agent and screen position for window placement
+      onAgentDoubleClick(clicked, { x: e.clientX, y: e.clientY })
+    }
   }
   
   // Reset positions button
   const resetPositions = () => {
     setNodePositions({})
+    try {
+      localStorage.removeItem('hivemind-node-positions')
+    } catch {}
   }
   
   // Reset view (zoom and pan)
@@ -415,8 +438,11 @@ export default function NetworkGraph() {
         onMouseUp={handleMouseUp}
         onMouseLeave={handleMouseUp}
         onClick={handleClick}
+        onDoubleClick={handleDoubleClick}
         onWheel={handleWheel}
       />
     </div>
   )
 }
+
+export default memo(NetworkGraph)

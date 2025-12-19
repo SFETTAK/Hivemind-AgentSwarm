@@ -1,5 +1,6 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, memo, useCallback } from 'react'
 import { useSwarmStore } from '../stores/swarmStore'
+import { getApiBase } from '../config'
 
 // Profile definitions matching Settings.jsx
 const PROFILES = {
@@ -40,16 +41,20 @@ const MODEL_CONFIGS = {
   },
 }
 
-export default function Header({ onSettingsClick }) {
+function Header({ onSettingsClick }) {
   const stats = useSwarmStore(state => state.stats)
+  const runtime = useSwarmStore(state => state.runtime)
   const connected = useSwarmStore(state => state.connected)
   const loading = useSwarmStore(state => state.loading)
-  const [speed, setSpeed] = useState(2) // Default to Fast
+  
+  // Persist speed selection to localStorage
+  const [speed, setSpeed] = useState(() => {
+    const saved = localStorage.getItem('hivemind-speed')
+    return saved ? parseInt(saved, 10) : 2 // Default to Fast
+  })
   const [saving, setSaving] = useState(false)
   
-  const apiBase = typeof window !== 'undefined' && window.location.hostname !== 'localhost' 
-    ? `http://${window.location.hostname}:3001` 
-    : 'http://localhost:3001'
+  const apiBase = getApiBase()
   
   // Load current profile on mount
   useEffect(() => {
@@ -61,20 +66,23 @@ export default function Header({ onSettingsClick }) {
           const s = data.settings
           if (s.MODEL_FORGE?.includes('deepseek') && s.MODEL_SENTINEL?.includes('deepseek')) {
             setSpeed(1) // Cruise
-          } else if (s.MODEL_FORGE?.includes('opus')) {
-            setSpeed(3) // Turbo
+          } else if (s.MODEL_FORGE?.includes('opus-4.5')) {
+            setSpeed(4) // Cosmic (opus-4.5)
+          } else if (s.MODEL_FORGE?.includes('opus-4')) {
+            setSpeed(3) // Turbo (opus-4)
           } else {
-            setSpeed(2) // Fast (default)
+            setSpeed(2) // Fast (default - sonnet)
           }
         }
       })
       .catch(() => {})
-  }, [])
+  }, [apiBase])
   
-  const handleSpeedChange = async (newSpeed) => {
+  const handleSpeedChange = useCallback(async (newSpeed) => {
     if (saving) return
     
     setSpeed(newSpeed)
+    localStorage.setItem('hivemind-speed', newSpeed.toString())
     setSaving(true)
     
     const profile = PROFILES[newSpeed]
@@ -91,7 +99,7 @@ export default function Header({ onSettingsClick }) {
     }
     
     setSaving(false)
-  }
+  }, [saving, apiBase])
   
   const currentProfile = PROFILES[speed]
   
@@ -112,7 +120,7 @@ export default function Header({ onSettingsClick }) {
       <div className="flex items-center gap-6">
         {/* Speed Selector */}
         <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-[#0a0e14] border border-[#27272a]">
-          <span className="text-lg" title={currentProfile.name}>{currentProfile.icon}</span>
+          <span className="text-lg w-6 text-center" title={currentProfile.name}>{currentProfile.icon}</span>
           <div className="flex items-center gap-1">
             {[1, 2, 3, 4].map(level => (
               <button
@@ -134,7 +142,7 @@ export default function Header({ onSettingsClick }) {
               </button>
             ))}
           </div>
-          <span className="text-xs ml-1" style={{ color: currentProfile.color }}>
+          <span className="text-xs ml-1 w-12 text-center" style={{ color: currentProfile.color }}>
             {currentProfile.name}
           </span>
         </div>
@@ -154,7 +162,7 @@ export default function Header({ onSettingsClick }) {
           </div>
           <div className="flex items-center gap-2">
             <span className="text-zinc-500">Runtime:</span>
-            <span className="text-white font-semibold">{stats.runtime}</span>
+            <span className="text-white font-semibold">{runtime}</span>
           </div>
         </div>
         
@@ -180,3 +188,5 @@ export default function Header({ onSettingsClick }) {
     </header>
   )
 }
+
+export default memo(Header)

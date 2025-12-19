@@ -1,13 +1,5 @@
 import { useState, useEffect, useRef } from 'react'
-
-// Dynamic API base
-const getApiBase = () => {
-  if (typeof window === 'undefined') return 'http://localhost:3001'
-  const host = window.location.hostname
-  return host === 'localhost' || host === '127.0.0.1' 
-    ? 'http://localhost:3001' 
-    : `http://${host}:3001`
-}
+import { getApiBase } from '../config'
 
 export default function TerminalPanel({ selectedAgent, agents }) {
   const [output, setOutput] = useState('')
@@ -16,31 +8,26 @@ export default function TerminalPanel({ selectedAgent, agents }) {
   const outputRef = useRef(null)
   const API_BASE = getApiBase()
   
-  // Get actual session name for the agent
-  const getSessionName = (agent) => {
-    if (!agent) return null
-    // CURSOR is not a tmux session - it's the human!
-    if (agent === 'cursor' || agent === 'cursor-entry') return null
-    // For conductor, use the actual session name from the agents list
-    if (agent === 'conductor' || agent.includes('conductor')) {
-      const conductorAgent = agents.find(a => a.shortName?.includes('conductor') && a.id?.startsWith('hive-'))
-      if (conductorAgent) {
-        return conductorAgent.shortName
-      }
-      return null // No conductor session running
+  // Get actual session name for the agent (for API calls)
+  const getSessionName = (agentId) => {
+    if (!agentId) return null
+    // USER is not a tmux session - it's the human!
+    if (agentId === 'user' || agentId === 'user-entry') return null
+    // Find the agent by ID and get its shortName for API calls
+    const agent = agents.find(a => a.id === agentId)
+    if (agent && agent.id?.startsWith('hive-')) {
+      return agent.shortName
     }
-    return agent
+    return null
   }
   
   // Check if this is a real tmux session
-  const isRealSession = (agent) => {
-    if (!agent) return false
-    if (agent === 'cursor' || agent === 'cursor-entry') return false
+  const isRealSession = (agentId) => {
+    if (!agentId) return false
+    if (agentId === 'user' || agentId === 'user-entry') return false
     // Check if it exists in agents with a hive- prefix
-    return agents.some(a => 
-      (a.shortName === agent || a.id === agent || a.id === `hive-${agent}`) && 
-      a.id?.startsWith('hive-')
-    )
+    const agent = agents.find(a => a.id === agentId)
+    return agent && agent.id?.startsWith('hive-')
   }
   
   // Fetch terminal output for selected agent
@@ -48,7 +35,7 @@ export default function TerminalPanel({ selectedAgent, agents }) {
     const sessionName = getSessionName(selectedAgent)
     
     if (!sessionName) {
-      if (selectedAgent === 'cursor' || selectedAgent === 'cursor-entry') {
+      if (selectedAgent === 'user' || selectedAgent === 'user-entry') {
         // Fetch any pending messages for display
         fetch(`${API_BASE}/api/cursor/messages`)
           .then(r => r.json())
@@ -61,20 +48,20 @@ export default function TerminalPanel({ selectedAgent, agents }) {
                 ).join('\n')
             }
             setOutput(`# ═══════════════════════════════════════════════════
-# 💻 CURSOR - Human Interface  
+# 👤 USER - Human Operator  
 # ═══════════════════════════════════════════════════
 # 
-# This is YOU - the human operator in Cursor IDE.
+# This is YOU - the human operator.
 # 
-# 💬 Type a message below to send it to Cursor AI!
-#    (I'll see it next time you chat with me)
+# 💬 Select an agent to view their terminal output
+#    or double-click agents in the topology to chat.
 #
-# Select an agent tab (🎯🔨🛡️🔮🔗📝) to control agents.
+# Use the CONDUCTOR panel on the right to orchestrate.
 # ═══════════════════════════════════════════════════${msgList}`)
           })
           .catch(() => {
-            setOutput(`# 💻 CURSOR - Human Interface
-# Type below to send a message to Cursor AI!`)
+            setOutput(`# 👤 USER - Human Operator
+# Select an agent to view terminal output`)
           })
       } else {
         setOutput('# Select an agent to view terminal output')
@@ -82,13 +69,24 @@ export default function TerminalPanel({ selectedAgent, agents }) {
       return
     }
     
+    let lastOutput = ''
+    
     const fetchOutput = async () => {
       try {
         const res = await fetch(`${API_BASE}/api/agents/${sessionName}/output`)
         const data = await res.json()
-        setOutput(data.output || '# No output yet\n# Agent may still be initializing...')
+        const newOutput = data.output || '# No output yet\n# Agent may still be initializing...'
+        // Only update if output actually changed (prevents re-renders that steal focus)
+        if (newOutput !== lastOutput) {
+          lastOutput = newOutput
+          setOutput(newOutput)
+        }
       } catch (e) {
-        setOutput(`# Error fetching output: ${e.message}`)
+        const errMsg = `# Error fetching output: ${e.message}`
+        if (errMsg !== lastOutput) {
+          lastOutput = errMsg
+          setOutput(errMsg)
+        }
       }
     }
     
@@ -108,7 +106,7 @@ export default function TerminalPanel({ selectedAgent, agents }) {
     if (!command.trim()) return
     
     // Special handling for CURSOR - send message to Cursor AI
-    if (selectedAgent === 'cursor' || selectedAgent === 'cursor-entry') {
+    if (selectedAgent === 'user' || selectedAgent === 'user-entry') {
       setLoading(true)
       try {
         const res = await fetch(`${API_BASE}/api/cursor/message`, {
@@ -161,13 +159,13 @@ export default function TerminalPanel({ selectedAgent, agents }) {
   
   // Filter agents for tabs - exclude CURSOR entry point but include CONDUCTOR
   const tabAgents = agents.filter(a => 
-    a.id !== 'cursor-entry' && 
+    a.id !== 'user-entry' && 
     a.id?.startsWith('hive-')
   )
   
   // Allow sending to CURSOR (messages to AI) or real tmux sessions
-  const isCursor = selectedAgent === 'cursor' || selectedAgent === 'cursor-entry'
-  const canSendCommands = isCursor || (getSessionName(selectedAgent) !== null && isRealSession(selectedAgent))
+  const isUser = selectedAgent === 'user' || selectedAgent === 'user-entry'
+  const canSendCommands = isUser || (getSessionName(selectedAgent) !== null && isRealSession(selectedAgent))
   
   return (
     <div className="bg-[#0a0f14] border border-[#27272a] rounded-xl flex flex-col h-full">
@@ -264,7 +262,7 @@ export default function TerminalPanel({ selectedAgent, agents }) {
             value={command}
             onChange={(e) => setCommand(e.target.value)}
             onKeyDown={handleKeyDown}
-            placeholder={isCursor ? 'Message Cursor AI...' : `Send to ${agentInfo?.name || 'agent'}...`}
+            placeholder={isUser ? 'Message to swarm...' : `Send to ${agentInfo?.name || 'agent'}...`}
             className="flex-1 bg-transparent text-white text-sm font-mono outline-none placeholder-zinc-600"
             disabled={loading}
           />

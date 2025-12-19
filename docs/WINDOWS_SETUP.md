@@ -201,32 +201,26 @@ export PATH=$PATH:$HOME/.local/bin
 
 ## Architecture Notes
 
-```
-┌─────────────────────────────────────────────────────────┐
-│                    WINDOWS                               │
-│  ┌─────────────┐     ┌─────────────┐                    │
-│  │   Cursor    │     │  Dashboard  │                    │
-│  │   (IDE)     │     │  (Browser)  │                    │
-│  └──────┬──────┘     └──────┬──────┘                    │
-│         │                   │                            │
-│         │ MCP Protocol      │ HTTP                       │
-│         │                   │                            │
-├─────────┼───────────────────┼────────────────────────────┤
-│         │      WSL2         │                            │
-│         ▼                   ▼                            │
-│  ┌─────────────────────────────────────┐                │
-│  │         MCP Server (Python)          │                │
-│  │         http://localhost:8000        │                │
-│  └──────────────────┬──────────────────┘                │
-│                     │                                    │
-│                     ▼                                    │
-│  ┌─────────────────────────────────────┐                │
-│  │              tmux                    │                │
-│  │   ┌────────┐ ┌────────┐ ┌────────┐  │                │
-│  │   │ FORGE  │ │SENTINEL│ │ ORACLE │  │                │
-│  │   └────────┘ └────────┘ └────────┘  │                │
-│  └─────────────────────────────────────┘                │
-└─────────────────────────────────────────────────────────┘
+```mermaid
+flowchart TB
+    subgraph WINDOWS["🪟 Windows"]
+        Cursor["🖥️ Cursor IDE"]
+        Dashboard["🌐 Dashboard<br/>(Browser)"]
+    end
+    
+    subgraph WSL2["🐧 WSL2 (Ubuntu)"]
+        MCP["🐝 MCP Server<br/>localhost:8000"]
+        
+        subgraph TMUX["📟 tmux sessions"]
+            FORGE["⚒️ FORGE"]
+            SENTINEL["🛡️ SENTINEL"]
+            ORACLE["🔮 ORACLE"]
+        end
+    end
+    
+    Cursor -->|"MCP Protocol"| MCP
+    Dashboard -->|"HTTP API"| MCP
+    MCP --> TMUX
 ```
 
 ## Running as a Service

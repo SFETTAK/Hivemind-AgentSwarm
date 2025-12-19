@@ -1,11 +1,5 @@
 import { create } from 'zustand'
-
-// Dynamically determine API URL based on current host
-const getApiUrl = () => {
-  if (typeof window === 'undefined') return 'http://localhost:3001/api'
-  const host = window.location.hostname
-  return host === 'localhost' ? 'http://localhost:3001/api' : `http://${host}:3001/api`
-}
+import { getApiUrl } from '../config'
 
 const API_URL = getApiUrl()
 
@@ -62,24 +56,45 @@ function parseMessages(markdown) {
   return messages.reverse().slice(0, 20)
 }
 
+// Load persisted selectedAgent from localStorage
+const getPersistedAgent = () => {
+  try {
+    return localStorage.getItem('hivemind-selected-agent') || null
+  } catch {
+    return null
+  }
+}
+
 export const useSwarmStore = create((set, get) => ({
   // State
   agents: [],
   edges: [],
   messages: [],
-  selectedAgent: null,
+  selectedAgent: getPersistedAgent(),
   stats: {
     agentCount: 0,
     messageCount: 0,
     cost: '$0.00',
-    runtime: '0s',
   },
+  runtime: '0s', // Separate from stats to prevent re-renders
   connected: false,
   loading: true,
   error: null,
   
   // Actions
-  setSelectedAgent: (agentId) => set({ selectedAgent: agentId }),
+  setSelectedAgent: (agentId) => {
+    // Persist to localStorage
+    try {
+      if (agentId) {
+        localStorage.setItem('hivemind-selected-agent', agentId)
+      } else {
+        localStorage.removeItem('hivemind-selected-agent')
+      }
+    } catch (e) {
+      // Ignore localStorage errors
+    }
+    set({ selectedAgent: agentId })
+  },
   
   // Fetch all data from API
   fetchData: async () => {
@@ -103,22 +118,56 @@ export const useSwarmStore = create((set, get) => ({
       // Parse messages from markdown
       const parsedMessages = parseMessages(messagesData.messages || '')
       
-      set({
-        agents: agentsData.agents,
-        edges: edgesData.edges,
-        stats: { ...statsData, messageCount: parsedMessages.length },
-        messages: parsedMessages,
-        connected: true,
-        loading: false,
-        error: null,
-      })
+      // Only update if data actually changed (prevents unnecessary re-renders)
+      const currentState = get()
+      const { runtime, ...statsWithoutRuntime } = statsData
+      const newStats = { ...statsWithoutRuntime, messageCount: parsedMessages.length }
+      
+      // Helper to compare agents without runtime (runtime changes every second)
+      const stripRuntime = (agents) => agents.map(({ runtime, ...rest }) => rest)
+      // Helper to compare edges without active (active toggles frequently for animations)
+      const stripActive = (edges) => edges.map(({ active, ...rest }) => rest)
+      
+      // Check if anything actually changed (excluding frequently-changing visual fields)
+      const agentsChanged = JSON.stringify(stripRuntime(currentState.agents)) !== JSON.stringify(stripRuntime(agentsData.agents))
+      const edgesChanged = JSON.stringify(stripActive(currentState.edges)) !== JSON.stringify(stripActive(edgesData.edges))
+      const statsChanged = JSON.stringify(currentState.stats) !== JSON.stringify(newStats)
+      const messagesChanged = JSON.stringify(currentState.messages) !== JSON.stringify(parsedMessages)
+      const connectionChanged = !currentState.connected || currentState.loading
+      const runtimeChanged = currentState.runtime !== runtime
+      
+      // Build update object - only include what changed
+      const updates = {}
+      
+      // For agents, we need to update runtime values without triggering full re-renders
+      // So we update agents array but components should use shallow comparison
+      if (agentsChanged) {
+        updates.agents = agentsData.agents
+      }
+      if (edgesChanged) updates.edges = edgesData.edges
+      if (statsChanged) updates.stats = newStats
+      if (messagesChanged) updates.messages = parsedMessages
+      if (runtimeChanged) updates.runtime = runtime
+      if (connectionChanged) {
+        updates.connected = true
+        updates.loading = false
+        updates.error = null
+      }
+      
+      // Only call set if something meaningful changed (not just runtime/active)
+      if (Object.keys(updates).length > 0) {
+        set(updates)
+      }
     } catch (error) {
       console.error('Failed to fetch swarm data:', error)
-      set({ 
-        connected: false, 
-        loading: false,
-        error: error.message,
-      })
+      const currentState = get()
+      if (currentState.connected || currentState.loading || currentState.error !== error.message) {
+        set({ 
+          connected: false, 
+          loading: false,
+          error: error.message,
+        })
+      }
     }
   },
   
@@ -128,7 +177,9 @@ export const useSwarmStore = create((set, get) => ({
   })),
 }))
 
-// Auto-fetch on store creation and poll every 2 seconds
+// Auto-fetch on store creation
 const store = useSwarmStore.getState()
 store.fetchData()
-setInterval(() => store.fetchData(), 2000)
+
+// Poll for data changes every 5 seconds (slower, less disruptive)
+setInterval(() => store.fetchData(), 5000)

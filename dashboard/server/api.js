@@ -20,7 +20,8 @@ app.use(express.json())
 // Configuration - All paths are configurable via settings.json or env vars
 // =============================================================================
 
-const SETTINGS_FILE = path.join(__dirname, '..', 'settings.json')
+// Store settings in server directory to avoid triggering Vite HMR
+const SETTINGS_FILE = path.join(__dirname, 'settings.json')
 
 // Default settings - all paths relative or configurable
 let currentSettings = {
@@ -37,6 +38,8 @@ let currentSettings = {
   MODEL_NEXUS: 'openrouter/deepseek/deepseek-chat-v3.1',
   MODEL_SCRIBE: 'openrouter/deepseek/deepseek-chat-v3.1',
   MODEL_CONDUCTOR: 'openrouter/anthropic/claude-sonnet-4',
+  // Conductor customization
+  CONDUCTOR_NAME: 'QUEEN',
   // Paths - relative to this package by default
   PROJECT_DIR: process.env.HIVEMIND_PROJECT_DIR || process.cwd(),
   PROMPTS_DIR: process.env.HIVEMIND_PROMPTS_DIR || path.join(__dirname, '..', '..', 'mcp', 'prompts'),
@@ -88,7 +91,7 @@ const getAgentPromptPath = (role) => {
     oracle: 'ORACLE_PROMPT.md',
     scribe: 'SCRIBE_PROMPT.md',
     nexus: 'NEXUS_PROMPT.md',
-    conductor: 'CONDUCTOR_PROMPT.md'
+    conductor: 'CONDUCTOR_WEB_PROMPT.md'
   }
   return path.join(promptsDir, promptFiles[role] || promptFiles.forge)
 }
@@ -204,31 +207,32 @@ app.get('/api/agents', async (req, res) => {
     }
   })
   
-  // Add CURSOR entry point
+  // Add USER entry point (the human operator)
   agents.unshift({
-    id: 'cursor-entry',
-    name: 'CURSOR',
-    shortName: 'cursor',
-    icon: '💻',
+    id: 'user-entry',
+    name: 'USER',
+    shortName: 'user',
+    icon: '👤',
     color: '#00d4ff',
     role: 'entry',
     status: 'active',
     model: 'you',
-    task: 'Human Interface',
+    task: 'Human Operator',
     runtime: formatRuntime(Date.now() - (sessions[0]?.created || Date.now())),
     x: 0.5,
     y: 0.15,
     size: 40,
   })
   
-  // Add CONDUCTOR
+  // Add CONDUCTOR (name is configurable)
+  const conductorName = currentSettings.CONDUCTOR_NAME || 'QUEEN'
   if (conductorSession) {
     agents.splice(1, 0, {
       ...conductorSession,
       id: conductorSession.id,
-      name: 'CONDUCTOR',
+      name: conductorName,
       shortName: 'conductor',
-      icon: '🎯',
+      icon: '👑',
       color: '#ff9500',
       role: 'conductor',
       status: conductorSession.attached ? 'active' : 'idle',
@@ -242,9 +246,9 @@ app.get('/api/agents', async (req, res) => {
   } else {
     agents.splice(1, 0, {
       id: 'conductor-placeholder',
-      name: 'CONDUCTOR',
+      name: conductorName,
       shortName: 'conductor',
-      icon: '🎯',
+      icon: '👑',
       color: '#666666',
       role: 'conductor',
       status: 'offline',
@@ -283,7 +287,7 @@ app.get('/api/edges', async (req, res) => {
   const edges = []
   
   edges.push({
-    from: 'cursor-entry',
+    from: 'user-entry',
     to: conductorSession ? conductorSession.id : 'conductor-placeholder',
     active: true,
     label: 'commands',
@@ -604,6 +608,73 @@ app.post('/api/swarm/stop', async (req, res) => {
 })
 
 // =============================================================================
+// Activity Feed Endpoint
+// =============================================================================
+
+app.get('/api/activity', async (req, res) => {
+  try {
+    const sessions = await getTmuxSessions()
+    const activities = []
+    
+    for (const session of sessions) {
+      if (!session.shortName.startsWith('hive-')) continue
+      
+      try {
+        // Get last 20 lines from the tmux session
+        const { stdout } = await execAsync(`tmux capture-pane -t ${session.id} -p -S -20 2>/dev/null || echo ""`)
+        const lines = stdout.trim().split('\n').filter(l => l.trim())
+        
+        // Try to summarize what's happening
+        let summary = ''
+        const lastLines = lines.slice(-5).join(' ').toLowerCase()
+        
+        if (lastLines.includes('error') || lastLines.includes('traceback')) {
+          summary = '✗ Error encountered'
+        } else if (lastLines.includes('commit') || lastLines.includes('committed')) {
+          summary = '✓ Made a commit'
+        } else if (lastLines.includes('test') && lastLines.includes('pass')) {
+          summary = '✓ Tests passing'
+        } else if (lastLines.includes('test') && lastLines.includes('fail')) {
+          summary = '✗ Tests failing'
+        } else if (lastLines.includes('writing') || lastLines.includes('creating')) {
+          summary = '📝 Writing files...'
+        } else if (lastLines.includes('reading') || lastLines.includes('analyzing')) {
+          summary = '🔍 Analyzing code...'
+        } else if (lastLines.includes('thinking') || lastLines.includes('...')) {
+          summary = '💭 Thinking...'
+        } else if (lastLines.includes('done') || lastLines.includes('complete')) {
+          summary = '✓ Task complete'
+        } else if (lines.length > 0) {
+          // Just show last meaningful line
+          const lastLine = lines[lines.length - 1].slice(0, 60)
+          summary = lastLine.length > 50 ? lastLine + '...' : lastLine
+        } else {
+          summary = '⏳ Waiting...'
+        }
+        
+        // Extract role from session name (hive-forge-xxx -> forge)
+        const parts = session.shortName.replace('hive-', '').split('-')
+        const role = parts[0]
+        
+        activities.push({
+          agent: session.shortName,
+          role: role,
+          status: session.attached ? 'active' : 'idle',
+          summary: summary,
+          lastOutput: lines.slice(-3).join('\n')
+        })
+      } catch (e) {
+        // Skip sessions we can't read
+      }
+    }
+    
+    res.json({ activities })
+  } catch (e) {
+    res.status(500).json({ error: e.message, activities: [] })
+  }
+})
+
+// =============================================================================
 // Conductor Chat Endpoint
 // =============================================================================
 
@@ -769,6 +840,199 @@ app.get('/api/inbox', async (req, res) => {
     unread: inbox.messages.filter(m => !m.read).length,
     sources: inbox.sources
   })
+})
+
+// =============================================================================
+// File System API
+// =============================================================================
+
+// List files in a directory (recursive tree structure)
+app.get('/api/files', async (req, res) => {
+  try {
+    const baseDir = req.query.path || getProjectDir()
+    const depth = parseInt(req.query.depth) || 3
+    
+    async function buildTree(dirPath, currentDepth = 0) {
+      const name = path.basename(dirPath)
+      const stats = await fs.stat(dirPath)
+      
+      if (!stats.isDirectory()) {
+        return { name, type: 'file', path: dirPath }
+      }
+      
+      const result = {
+        name,
+        type: 'folder',
+        path: dirPath,
+        expanded: currentDepth < 1, // Auto-expand first level
+        children: []
+      }
+      
+      if (currentDepth >= depth) {
+        return result
+      }
+      
+      try {
+        const entries = await fs.readdir(dirPath, { withFileTypes: true })
+        
+        // Sort: folders first, then files, alphabetically
+        const sorted = entries.sort((a, b) => {
+          if (a.isDirectory() && !b.isDirectory()) return -1
+          if (!a.isDirectory() && b.isDirectory()) return 1
+          return a.name.localeCompare(b.name)
+        })
+        
+        // Filter out hidden files and common excludes
+        const filtered = sorted.filter(entry => {
+          if (entry.name.startsWith('.') && entry.name !== '.hivemind') return false
+          if (['node_modules', '__pycache__', '.git', 'dist', 'build'].includes(entry.name)) return false
+          return true
+        })
+        
+        for (const entry of filtered) {
+          const childPath = path.join(dirPath, entry.name)
+          const child = await buildTree(childPath, currentDepth + 1)
+          result.children.push(child)
+        }
+      } catch (e) {
+        // Can't read directory - permission denied, etc.
+        result.error = e.message
+      }
+      
+      return result
+    }
+    
+    const tree = await buildTree(baseDir)
+    res.json({ tree, basePath: baseDir })
+    
+  } catch (e) {
+    res.status(500).json({ error: e.message })
+  }
+})
+
+// Create new file
+app.post('/api/files/new', async (req, res) => {
+  try {
+    const { filePath, content = '' } = req.body
+    if (!filePath) return res.status(400).json({ error: 'filePath required' })
+    
+    // Security: ensure path is within project dir
+    const fullPath = path.resolve(filePath)
+    const projectDir = path.resolve(getProjectDir())
+    if (!fullPath.startsWith(projectDir)) {
+      return res.status(403).json({ error: 'Path outside project directory' })
+    }
+    
+    await fs.writeFile(fullPath, content, 'utf-8')
+    res.json({ success: true, path: fullPath })
+    
+  } catch (e) {
+    res.status(500).json({ error: e.message })
+  }
+})
+
+// Create new folder
+app.post('/api/files/mkdir', async (req, res) => {
+  try {
+    const { folderPath } = req.body
+    if (!folderPath) return res.status(400).json({ error: 'folderPath required' })
+    
+    // Security: ensure path is within project dir
+    const fullPath = path.resolve(folderPath)
+    const projectDir = path.resolve(getProjectDir())
+    if (!fullPath.startsWith(projectDir)) {
+      return res.status(403).json({ error: 'Path outside project directory' })
+    }
+    
+    await fs.mkdir(fullPath, { recursive: true })
+    res.json({ success: true, path: fullPath })
+    
+  } catch (e) {
+    res.status(500).json({ error: e.message })
+  }
+})
+
+// Delete file or folder
+app.delete('/api/files', async (req, res) => {
+  try {
+    const { filePath } = req.body
+    if (!filePath) return res.status(400).json({ error: 'filePath required' })
+    
+    // Security: ensure path is within project dir
+    const fullPath = path.resolve(filePath)
+    const projectDir = path.resolve(getProjectDir())
+    if (!fullPath.startsWith(projectDir)) {
+      return res.status(403).json({ error: 'Path outside project directory' })
+    }
+    
+    // Don't allow deleting the project root
+    if (fullPath === projectDir) {
+      return res.status(403).json({ error: 'Cannot delete project root' })
+    }
+    
+    const stats = await fs.stat(fullPath)
+    if (stats.isDirectory()) {
+      await fs.rm(fullPath, { recursive: true })
+    } else {
+      await fs.unlink(fullPath)
+    }
+    
+    res.json({ success: true, deleted: fullPath })
+    
+  } catch (e) {
+    res.status(500).json({ error: e.message })
+  }
+})
+
+// Rename file or folder
+app.post('/api/files/rename', async (req, res) => {
+  try {
+    const { oldPath, newPath } = req.body
+    if (!oldPath || !newPath) return res.status(400).json({ error: 'oldPath and newPath required' })
+    
+    // Security: ensure both paths are within project dir
+    const fullOldPath = path.resolve(oldPath)
+    const fullNewPath = path.resolve(newPath)
+    const projectDir = path.resolve(getProjectDir())
+    
+    if (!fullOldPath.startsWith(projectDir) || !fullNewPath.startsWith(projectDir)) {
+      return res.status(403).json({ error: 'Path outside project directory' })
+    }
+    
+    await fs.rename(fullOldPath, fullNewPath)
+    res.json({ success: true, oldPath: fullOldPath, newPath: fullNewPath })
+    
+  } catch (e) {
+    res.status(500).json({ error: e.message })
+  }
+})
+
+// Read file content
+app.get('/api/files/read', async (req, res) => {
+  try {
+    const filePath = req.query.path
+    if (!filePath) return res.status(400).json({ error: 'path query param required' })
+    
+    // Security: ensure path is within project dir
+    const fullPath = path.resolve(filePath)
+    const projectDir = path.resolve(getProjectDir())
+    if (!fullPath.startsWith(projectDir)) {
+      return res.status(403).json({ error: 'Path outside project directory' })
+    }
+    
+    const content = await fs.readFile(fullPath, 'utf-8')
+    const stats = await fs.stat(fullPath)
+    
+    res.json({ 
+      content, 
+      path: fullPath,
+      size: stats.size,
+      modified: stats.mtime
+    })
+    
+  } catch (e) {
+    res.status(500).json({ error: e.message })
+  }
 })
 
 // =============================================================================

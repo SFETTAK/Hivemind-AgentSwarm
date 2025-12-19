@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from 'react'
+import { getApiBase } from '../config'
 
-export default function Commentator() {
+export default function Commentator({ embedded = false }) {
   const [commentary, setCommentary] = useState([
     { id: 1, time: getTimeStr(), text: '🎙️ Commentator online. Watching the swarm...', type: 'intro', agent: null },
   ])
@@ -21,11 +22,9 @@ export default function Commentator() {
     
     const fetchActivity = async () => {
       try {
-        const apiUrl = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1'
-          ? 'http://localhost:3001/api'
-          : `http://${window.location.hostname}:3001/api`
+        const apiBase = getApiBase()
         
-        const res = await fetch(`${apiUrl}/activity`)
+        const res = await fetch(`${apiBase}/api/activity`)
         const data = await res.json()
         
         if (data.activities && data.activities.length > 0) {
@@ -110,36 +109,64 @@ export default function Commentator() {
   }
   
   return (
-    <div className="h-full flex flex-col bg-[#131920] rounded-lg overflow-hidden" style={{ border: '1px solid #1e2a3a' }}>
-      {/* Header */}
-      <div className="flex items-center justify-between px-3 py-2" style={{ borderBottom: '1px solid #1e2a3a' }}>
-        <div className="flex items-center gap-2">
-          <span className="text-sm">🎙️</span>
-          <span className="text-xs text-zinc-400 uppercase tracking-wider font-medium">Activity Log</span>
+    <div className={`h-full flex flex-col overflow-hidden ${embedded ? '' : 'bg-[#131920] rounded-lg'}`} style={embedded ? {} : { border: '1px solid #1e2a3a' }}>
+      {/* Header - only show if not embedded */}
+      {!embedded && (
+        <div className="flex items-center justify-between px-3 py-2" style={{ borderBottom: '1px solid #1e2a3a' }}>
+          <div className="flex items-center gap-2">
+            <span className="text-sm">🎙️</span>
+            <span className="text-xs text-zinc-400 uppercase tracking-wider font-medium">Activity Log</span>
+            {isLive && (
+              <span className="flex items-center gap-1 text-xs text-red-500">
+                <span className="w-2 h-2 bg-red-500 rounded-full animate-pulse"></span>
+                LIVE
+              </span>
+            )}
+          </div>
+          <div className="flex items-center gap-2">
+            <button 
+              onClick={() => setCommentary([{ id: 1, time: getTimeStr(), text: '🎙️ Log cleared', type: 'intro', agent: null }])}
+              className="text-xs text-zinc-500 hover:text-white"
+              title="Clear log"
+            >
+              🗑
+            </button>
+            <button 
+              onClick={() => setIsLive(!isLive)}
+              className="text-xs text-zinc-500 hover:text-white"
+              title={isLive ? 'Pause' : 'Resume'}
+            >
+              {isLive ? '⏸' : '▶'}
+            </button>
+          </div>
+        </div>
+      )}
+      
+      {/* Embedded mini-header with just controls */}
+      {embedded && (
+        <div className="flex items-center justify-end px-2 py-1 bg-gray-800/30">
           {isLive && (
-            <span className="flex items-center gap-1 text-xs text-red-500">
-              <span className="w-2 h-2 bg-red-500 rounded-full animate-pulse"></span>
+            <span className="flex items-center gap-1 text-xs text-red-500 mr-auto">
+              <span className="w-1.5 h-1.5 bg-red-500 rounded-full animate-pulse"></span>
               LIVE
             </span>
           )}
-        </div>
-        <div className="flex items-center gap-2">
           <button 
             onClick={() => setCommentary([{ id: 1, time: getTimeStr(), text: '🎙️ Log cleared', type: 'intro', agent: null }])}
-            className="text-xs text-zinc-500 hover:text-white"
+            className="text-xs text-zinc-500 hover:text-white px-1"
             title="Clear log"
           >
             🗑
           </button>
           <button 
             onClick={() => setIsLive(!isLive)}
-            className="text-xs text-zinc-500 hover:text-white"
+            className="text-xs text-zinc-500 hover:text-white px-1"
             title={isLive ? 'Pause' : 'Resume'}
           >
             {isLive ? '⏸' : '▶'}
           </button>
         </div>
-      </div>
+      )}
       
       {/* Activity Feed */}
       <div 

@@ -1,14 +1,10 @@
-import { useState } from 'react'
+import { useState, memo } from 'react'
 
 // Dynamic API base URL - uses current hostname for remote access
-const getApiBase = () => {
-  if (typeof window === 'undefined') return 'http://localhost:3001'
-  const host = window.location.hostname
-  return host === 'localhost' ? 'http://localhost:3001' : `http://${host}:3001`
-}
+import { getApiBase } from '../config'
 const API_BASE = getApiBase()
 
-export default function Controls() {
+const Controls = memo(function Controls({ embedded = false }) {
   const [loading, setLoading] = useState(null)
   const [showBroadcast, setShowBroadcast] = useState(false)
   const [broadcastMsg, setBroadcastMsg] = useState('')
@@ -78,10 +74,12 @@ export default function Controls() {
   }
 
   return (
-    <div className="bg-[#131920] border border-[#27272a] rounded-xl p-4">
-      <div className="text-xs text-zinc-500 uppercase tracking-widest mb-3">
-        ⚡ Swarm Controls
-      </div>
+    <div className={embedded ? "h-full overflow-y-auto p-2" : "bg-[#131920] border border-[#27272a] rounded-xl p-4"}>
+      {!embedded && (
+        <div className="text-xs text-zinc-500 uppercase tracking-widest mb-3">
+          ⚡ Swarm Controls
+        </div>
+      )}
       
       <div className="space-y-2">
         {/* Deploy Agent */}
@@ -154,4 +152,6 @@ export default function Controls() {
       </div>
     </div>
   )
-}
+})
+
+export default Controls
