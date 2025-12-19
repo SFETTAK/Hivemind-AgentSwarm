@@ -2,6 +2,12 @@
 
 An AI agent orchestration system for Cursor IDE. Deploy, monitor, and coordinate multiple AI agents working in parallel on your codebase.
 
+![Hivemind Dashboard](assets/dashboard-preview.jpg)
+
+## Demo
+
+https://github.com/user-attachments/assets/demo.mp4
+
 ## Features
 
 - **Multi-Agent Orchestration** - Deploy specialized agents (FORGE, SENTINEL, ORACLE, NEXUS, SCRIBE) with distinct roles
