@@ -13,27 +13,31 @@ An AI agent orchestration system for Cursor IDE. Deploy, monitor, and coordinate
 
 ## Architecture
 
-```
-┌─────────────────────────────────────────────────────────────┐
-│                        CURSOR IDE                           │
-│  ┌─────────────────────────────────────────────────────┐   │
-│  │                    CONDUCTOR                         │   │
-│  │            (AI Orchestrator Agent)                   │   │
-│  └─────────────────────────────────────────────────────┘   │
-│                          │                                  │
-│            ┌─────────────┼─────────────┐                   │
-│            ▼             ▼             ▼                   │
-│       ┌─────────┐  ┌─────────┐  ┌─────────┐               │
-│       │  FORGE  │  │SENTINEL │  │ ORACLE  │  ...          │
-│       │(Builder)│  │(Tester) │  │(Research)│              │
-│       └─────────┘  └─────────┘  └─────────┘               │
-└─────────────────────────────────────────────────────────────┘
-         │                │                │
-         └────────────────┼────────────────┘
-                          │
-                    [tmux sessions]
-                          │
-                    [your codebase]
+```mermaid
+flowchart TB
+    subgraph CURSOR["🖥️ CURSOR IDE"]
+        direction TB
+        CONDUCTOR["🎯 CONDUCTOR<br/><i>AI Orchestrator</i>"]
+        
+        CONDUCTOR --> FORGE["🔨 FORGE<br/><i>Builder</i>"]
+        CONDUCTOR --> SENTINEL["🛡️ SENTINEL<br/><i>Tester</i>"]
+        CONDUCTOR --> ORACLE["🔮 ORACLE<br/><i>Research</i>"]
+        CONDUCTOR --> NEXUS["🔗 NEXUS<br/><i>Integration</i>"]
+        CONDUCTOR --> SCRIBE["📝 SCRIBE<br/><i>Documentation</i>"]
+    end
+    
+    FORGE & SENTINEL & ORACLE & NEXUS & SCRIBE --> TMUX["📺 tmux sessions"]
+    TMUX --> CODE["📁 Your Codebase"]
+    
+    style CONDUCTOR fill:#ff6b6b,stroke:#333,stroke-width:2px,color:#fff
+    style FORGE fill:#4ecdc4,stroke:#333,stroke-width:2px,color:#fff
+    style SENTINEL fill:#45b7d1,stroke:#333,stroke-width:2px,color:#fff
+    style ORACLE fill:#96ceb4,stroke:#333,stroke-width:2px,color:#fff
+    style NEXUS fill:#ffeaa7,stroke:#333,stroke-width:2px,color:#333
+    style SCRIBE fill:#dfe6e9,stroke:#333,stroke-width:2px,color:#333
+    style CURSOR fill:#2d3436,stroke:#636e72,stroke-width:3px,color:#fff
+    style TMUX fill:#6c5ce7,stroke:#333,stroke-width:2px,color:#fff
+    style CODE fill:#fdcb6e,stroke:#333,stroke-width:2px,color:#333
 ```
 
 ## Quick Start
