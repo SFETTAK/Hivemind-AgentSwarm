@@ -370,11 +370,18 @@ function ConductorPanel() {
             disabled={loading}
           />
           <button
-            onClick={sendMessage}
-            disabled={loading || (!input.trim() && attachedFiles.length === 0)}
-            className="px-3 py-1.5 bg-[#00d4ff] text-black rounded text-xs font-medium hover:bg-[#00b8e6] disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+            onClick={() => {
+              console.log('Send clicked, input:', input, 'loading:', loading, 'files:', attachedFiles.length)
+              sendMessage()
+            }}
+            disabled={loading}
+            className={`px-3 py-1.5 rounded text-xs font-medium transition-colors ${
+              input.trim() || attachedFiles.length > 0
+                ? 'bg-[#00d4ff] text-black hover:bg-[#00b8e6]'
+                : 'bg-zinc-700 text-zinc-400 cursor-not-allowed'
+            }`}
           >
-            Send
+            {loading ? '...' : 'Send'}
           </button>
         </div>
       </div>
