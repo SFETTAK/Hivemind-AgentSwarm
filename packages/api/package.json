@@ -1,0 +1,28 @@
+{
+  "name": "@hivemind/api",
+  "version": "0.1.0",
+  "description": "Express API server for Hivemind",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "scripts": {
+    "build": "tsc",
+    "dev": "tsx watch src/index.ts",
+    "start": "node dist/index.js",
+    "test": "vitest",
+    "clean": "rm -rf dist"
+  },
+  "dependencies": {
+    "@hivemind/core": "workspace:*",
+    "@hivemind/connectors": "workspace:*",
+    "express": "^4.18.0",
+    "cors": "^2.8.5"
+  },
+  "devDependencies": {
+    "@types/express": "^4.17.0",
+    "@types/cors": "^2.8.0",
+    "typescript": "^5.3.0",
+    "tsx": "^4.0.0",
+    "vitest": "^1.0.0"
+  }
+}
+
