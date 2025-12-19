@@ -58,33 +58,37 @@ flowchart TB
 
 ### Windows Users (WSL2 Required)
 
-Hivemind uses tmux for agent session management, which requires a Linux environment. On Windows, use WSL2:
+Hivemind uses tmux for agent session management, which requires a Linux environment. On Windows, use WSL2.
 
+**Automated Setup (Recommended):**
+
+```powershell
+# Run as Administrator
+.\scripts\windows-setup.ps1
+```
+
+**Manual Setup:**
+
+See [docs/WINDOWS_SETUP.md](docs/WINDOWS_SETUP.md) for detailed instructions.
+
+**Quick Manual Steps:**
 ```powershell
 # 1. Install WSL2 (run in PowerShell as Administrator)
 wsl --install
 
-# 2. Restart your computer, then open Ubuntu from Start Menu
-
-# 3. Inside WSL2, install dependencies
-sudo apt update
-sudo apt install -y tmux nodejs npm python3-pip
-
-# 4. Install aider
-pip install aider-chat
-
-# 5. Continue with Installation steps below (inside WSL2)
+# 2. Restart, then in WSL run:
+./scripts/wsl-install.sh
 ```
 
-> **Tip:** You can access WSL2 files from Windows at `\\wsl$\Ubuntu\home\yourusername\`
+> **Tip:** You can access WSL2 files from Windows at `\\wsl$\Ubuntu\home\<your-wsl-username>\`
 > 
-> **Tip:** Run `code .` inside WSL2 to open VS Code/Cursor with WSL integration
+> **Tip:** Run `cursor .` inside WSL2 to open Cursor with WSL integration
 
 ### Installation
 
 ```bash
 # Clone the repo
-git clone https://github.com/yourusername/hivemind-agentswarm.git
+git clone https://github.com/SFETTAK/Hivemind-AgentSwarm.git
 cd hivemind-agentswarm
 
 # Install MCP server dependencies
@@ -186,7 +190,12 @@ hivemind/
 │   │   ├── components/
 │   │   └── stores/
 │   └── package.json
+├── scripts/                  # Setup & utility scripts
+│   ├── windows-setup.ps1     # Windows/WSL automated setup
+│   ├── wsl-install.sh        # WSL dependency installer
+│   └── start-server.sh       # Start MCP server
 └── docs/                     # Documentation
+    └── WINDOWS_SETUP.md      # Detailed Windows guide
 ```
 
 ## Environment Variables
