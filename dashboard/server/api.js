@@ -265,7 +265,10 @@ app.get('/api/agents', async (req, res) => {
 })
 
 app.get('/api/agents/:name/output', async (req, res) => {
-  const output = await readTmuxPane(`hive-${req.params.name}`)
+  // Handle both "hive-xxx" and "xxx" formats
+  const name = req.params.name
+  const sessionName = name.startsWith('hive-') ? name : `hive-${name}`
+  const output = await readTmuxPane(sessionName)
   res.json({ output })
 })
 
@@ -551,7 +554,9 @@ app.post('/api/agents/deploy', async (req, res) => {
 
 app.post('/api/agents/:name/send', async (req, res) => {
   const { command } = req.body
-  const sessionName = `hive-${req.params.name}`
+  // Handle both "hive-xxx" and "xxx" formats
+  const name = req.params.name
+  const sessionName = name.startsWith('hive-') ? name : `hive-${name}`
   
   try {
     await execAsync(`tmux send-keys -t ${sessionName} '${command.replace(/'/g, "'\\''")}' Enter`)
@@ -617,7 +622,8 @@ app.get('/api/activity', async (req, res) => {
     const activities = []
     
     for (const session of sessions) {
-      if (!session.shortName.startsWith('hive-')) continue
+      // Session ID starts with hive-, shortName has it stripped
+      if (!session.id?.startsWith('hive-')) continue
       
       try {
         // Get last 20 lines from the tmux session
@@ -645,9 +651,14 @@ app.get('/api/activity', async (req, res) => {
         } else if (lastLines.includes('done') || lastLines.includes('complete')) {
           summary = '✓ Task complete'
         } else if (lines.length > 0) {
-          // Just show last meaningful line
-          const lastLine = lines[lines.length - 1].slice(0, 60)
-          summary = lastLine.length > 50 ? lastLine + '...' : lastLine
+          // Just show last meaningful line (skip bare prompts)
+          const lastLine = lines[lines.length - 1].trim()
+          if (lastLine === '>' || lastLine === '$' || lastLine === '>>>' || lastLine.length < 3) {
+            summary = '⏳ Idle at prompt'
+          } else {
+            const truncated = lastLine.slice(0, 60)
+            summary = truncated.length > 50 ? truncated + '...' : truncated
+          }
         } else {
           summary = '⏳ Waiting...'
         }

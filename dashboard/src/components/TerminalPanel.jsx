@@ -1,6 +1,32 @@
 import { useState, useEffect, useRef } from 'react'
 import { getApiBase } from '../config'
 
+// Redact sensitive secrets from terminal output
+// Keeps hive-generated keys visible, hides backend infrastructure secrets
+function redactSecrets(text) {
+  if (!text) return text
+  
+  // First, join lines that are split mid-key (common in terminal wrapping)
+  let cleaned = text
+  
+  // Redact OpenRouter API keys (may span lines)
+  cleaned = cleaned.replace(/sk-or-v1-[a-zA-Z0-9\n]{20,}/g, 'sk-or-v1-••••••••••••••••')
+  
+  // Redact Anthropic API keys (may span lines)  
+  cleaned = cleaned.replace(/sk-ant-api[0-9]*-[a-zA-Z0-9_\n-]{20,}/g, 'sk-ant-••••••••••••••••')
+  
+  // Redact OpenAI API keys
+  cleaned = cleaned.replace(/sk-[a-zA-Z0-9]{16,}/g, 'sk-••••••••••••••••')
+  
+  // Redact any export KEY= statements entirely
+  cleaned = cleaned.replace(/export\s+(OPENROUTER_API_KEY|ANTHROPIC_API_KEY|OPENAI_API_KEY|API_KEY|SECRET|TOKEN)=["']?[^"'\n]*["']?/gi, 'export $1="••••••••••••••••"')
+  
+  // AWS keys
+  cleaned = cleaned.replace(/AKIA[A-Z0-9]{12,}/g, 'AKIA••••••••••••')
+  
+  return cleaned
+}
+
 export default function TerminalPanel({ selectedAgent, agents }) {
   const [output, setOutput] = useState('')
   const [command, setCommand] = useState('')
@@ -218,7 +244,7 @@ export default function TerminalPanel({ selectedAgent, agents }) {
           minHeight: '200px'
         }}
       >
-        {output.split('\n')
+        {redactSecrets(output).split('\n')
           // Filter out Aider metadata lines
           .filter(line => {
             // Hide token/cost lines

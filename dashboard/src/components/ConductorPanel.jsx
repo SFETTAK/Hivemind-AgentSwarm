@@ -287,10 +287,10 @@ function ConductorPanel() {
               key={msg.id}
               className={`text-xs p-2 rounded ${
                 msg.role === 'user' 
-                  ? 'bg-[#1e2a3a] text-zinc-200 ml-4' 
+                  ? 'bg-[#1e2a3a] text-zinc-300 ml-4' 
                   : msg.role === 'error'
                   ? 'bg-red-900/30 text-red-400 mr-4'
-                  : 'bg-[#0d1117] border border-[#1e2a3a] text-zinc-300 mr-4'
+                  : 'bg-[#0d1117] border border-[#1e2a3a] text-[#e0e6ed] mr-4'
               }`}
             >
               {msg.role === 'assistant' && (

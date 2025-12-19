@@ -29,15 +29,16 @@ export default function Commentator({ embedded = false }) {
         
         if (data.activities && data.activities.length > 0) {
           const newComments = []
+          const isFirstLoad = Object.keys(lastActivity).length === 0
           
           data.activities.forEach(activity => {
-            // Only add if activity changed from last time
+            // Only add if activity changed from last time (or first load)
             const lastSeen = lastActivity[activity.agent]
-            if (lastSeen !== activity.summary && activity.summary) {
+            if ((isFirstLoad || lastSeen !== activity.summary) && activity.summary) {
               newComments.push({
                 id: Date.now() + Math.random(),
                 time: getTimeStr(),
-                text: activity.summary,
+                text: isFirstLoad ? `${activity.agent}: ${activity.summary}` : activity.summary,
                 type: getActivityType(activity.summary),
                 agent: activity.agent,
                 role: activity.role,
@@ -67,7 +68,8 @@ export default function Commentator({ embedded = false }) {
     fetchActivity() // Initial fetch
     
     return () => clearInterval(interval)
-  }, [isLive, lastActivity])
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isLive]) // Don't include lastActivity - it changes on every poll!
   
   const roleColors = {
     forge: '#00ff88',
