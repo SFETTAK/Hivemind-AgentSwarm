@@ -116,17 +116,17 @@ Open http://localhost:5173 to view the dashboard.
 |------|------|---------|---------------|
 | **FORGE** | 🔨 | Building, creating, implementing | Claude Sonnet 4 |
 | **SENTINEL** | 🛡️ | Testing, validation, verification | Claude Sonnet 4 |
-| **ORACLE** | 🔮 | Research, analysis, exploration | DeepSeek |
-| **NEXUS** | 🔗 | Integration, coordination, APIs | DeepSeek |
-| **SCRIBE** | 📝 | Documentation, writing | DeepSeek |
+| **ORACLE** | 🔮 | Research, analysis, exploration | Configurable |
+| **NEXUS** | 🔗 | Integration, coordination, APIs | Configurable |
+| **SCRIBE** | 📝 | Documentation, writing | Configurable |
 | **CONDUCTOR** | 🎯 | Orchestration, task breakdown | Claude Sonnet 4 |
 
 ## Model Profiles
 
 The dashboard supports quick-switching between model profiles:
 
-- **Cruise** (🐢) - Cheapest: DeepSeek for all agents
-- **Fast** (🐇) - Balanced: Sonnet for FORGE/SENTINEL, DeepSeek for others
+- **Cruise** (🐢) - Cheapest: Budget models for all agents
+- **Fast** (🐇) - Balanced: Premium for builders, budget for support roles
 - **Turbo** (🚀) - Performance: Sonnet 4 for all agents
 - **Cosmic** (✨) - Maximum: Opus 4.5 for all agents
 
