@@ -1,0 +1,13 @@
+{
+  "mcpServers": {
+    "hivemind": {
+      "command": "python",
+      "args": ["/path/to/hivemind-clean/mcp/hivemind_mcp.py"],
+      "env": {
+        "HIVEMIND_PROJECT_DIR": "/path/to/your/project",
+        "HIVEMIND_TMUX_PREFIX": "hive"
+      }
+    }
+  }
+}
+

@@ -1,0 +1,109 @@
+.health-monitor {
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  padding: 20px;
+}
+
+.health-monitor.dark {
+  background: #1a1a1a;
+  color: #fff;
+}
+
+.health-cards-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+  gap: 20px;
+  margin-top: 20px;
+}
+
+@media (max-width: 768px) {
+  .health-cards-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+.health-card {
+  border: 1px solid #ddd;
+  border-radius: 8px;
+  padding: 16px;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  transition: transform 0.2s ease;
+}
+
+.health-card:hover {
+  transform: translateY(-2px);
+}
+
+.health-card.dark {
+  background: #2d2d2d;
+  border-color: #404040;
+  color: #fff;
+}
+
+.health-card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 12px;
+}
+
+.health-status-indicator {
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+}
+
+@keyframes healthyPulse {
+  0% { box-shadow: 0 0 0 0 rgba(0, 255, 136, 0.7); }
+  70% { box-shadow: 0 0 0 10px rgba(0, 255, 136, 0); }
+  100% { box-shadow: 0 0 0 0 rgba(0, 255, 136, 0); }
+}
+
+.health-card-details {
+  font-size: 14px;
+  color: #666;
+}
+
+.health-card.dark .health-card-details {
+  color: #ccc;
+}
+
+.loading, .error, .last-updated {
+  margin-bottom: 16px;
+  padding: 8px;
+  border-radius: 4px;
+}
+
+.error {
+  background: #ffe6e6;
+  color: #d00;
+  border: 1px solid #d00;
+}
+
+.health-monitor.dark .error {
+  background: #3a2525;
+  color: #ff6b6b;
+  border-color: #ff6b6b;
+}
+
+.last-updated {
+  color: #666;
+  font-size: 14px;
+}
+
+.health-monitor.dark .last-updated {
+  color: #ccc;
+}
+
+button {
+  background: #007bff;
+  color: white;
+  border: none;
+  padding: 8px 16px;
+  border-radius: 4px;
+  cursor: pointer;
+  margin-left: 8px;
+}
+
+button:hover {
+  background: #0056b3;
+}

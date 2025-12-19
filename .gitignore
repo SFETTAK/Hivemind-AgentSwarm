@@ -1,0 +1,52 @@
+# Dependencies
+node_modules/
+__pycache__/
+*.pyc
+.venv/
+venv/
+
+# Build outputs
+dist/
+build/
+*.egg-info/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Environment and secrets
+.env
+.env.local
+.env.*.local
+settings.json
+*.key
+*.pem
+
+# Runtime data
+*.log
+*.pid
+costs.json
+hivemind-inbox.json
+
+# Project state (generated per-session)
+.hivemind/
+.worktrees/
+.conductor/
+*.conductor/
+
+# Chat histories (generated, contain sensitive data)
+chat_history*.json
+conductor_history*.json
+
+# Temporary files
+tmp/
+temp/
+*.tmp
+
+dist/

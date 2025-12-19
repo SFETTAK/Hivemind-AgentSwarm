@@ -1,0 +1,19 @@
+{
+  "OPENROUTER_API_KEY": "sk-or-v1-your-key-here",
+  "ANTHROPIC_API_KEY": "sk-ant-your-key-here",
+  "OPENAI_API_KEY": "",
+  "MCP_SERVER_URL": "http://127.0.0.1:8000",
+  "API_SERVER_URL": "http://localhost:3001",
+  "OLLAMA_ENDPOINT": "http://localhost:11434",
+  "MODEL_FORGE": "openrouter/anthropic/claude-sonnet-4",
+  "MODEL_SENTINEL": "openrouter/anthropic/claude-sonnet-4",
+  "MODEL_ORACLE": "openrouter/deepseek/deepseek-chat-v3.1",
+  "MODEL_NEXUS": "openrouter/deepseek/deepseek-chat-v3.1",
+  "MODEL_SCRIBE": "openrouter/deepseek/deepseek-chat-v3.1",
+  "MODEL_CONDUCTOR": "openrouter/anthropic/claude-sonnet-4",
+  "PROJECT_DIR": "/path/to/your/project",
+  "PROMPTS_DIR": "../mcp/prompts",
+  "TMUX_PREFIX": "hive",
+  "AUTO_ACCEPT": true
+}
+
