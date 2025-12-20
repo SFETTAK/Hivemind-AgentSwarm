@@ -45,7 +45,7 @@ function ControlsComponent({ embedded = false, apiBase }: ControlsProps) {
     if (!broadcastMsg.trim()) return
     setLoading('broadcast')
     try {
-      const res = await fetch(`${apiBase}/api/broadcast`, {
+      const res = await fetch(`${apiBase}/api/swarm/broadcast`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ message: broadcastMsg })
