@@ -37,14 +37,32 @@ hivemind-modular/
 
 ## 🚀 Quick Start
 
+### One-Line Install (Recommended)
+
+**Linux / macOS / WSL:**
 ```bash
+curl -fsSL https://raw.githubusercontent.com/SFETTAK/Hivemind-AgentSwarm/main/scripts/install.sh | bash
+```
+
+**Windows:**
+Download and run [`install-windows.bat`](scripts/install-windows.bat) as Administrator.
+
+👉 **[Full Installation Guide](docs/INSTALL.md)**
+
+### Manual Install
+
+```bash
+# Clone
+git clone https://github.com/SFETTAK/Hivemind-AgentSwarm.git
+cd Hivemind-AgentSwarm
+
 # Install dependencies
 pnpm install
 
 # Build all packages
 pnpm build
 
-# Start the API server
+# Start
 pnpm start
 ```
 
