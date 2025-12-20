@@ -143,15 +143,43 @@ if ! check_command pnpm; then
 fi
 
 # -----------------------------------------------------------------------------
-# Install aider (optional - Hivemind works without it)
+# Install pipx (needed for aider on modern Ubuntu)
+# -----------------------------------------------------------------------------
+if ! check_command pipx; then
+    log_info "Installing pipx..."
+    if command -v apt-get &> /dev/null; then
+        sudo apt-get install -y pipx 2>/dev/null || pip3 install --user pipx --break-system-packages 2>/dev/null || true
+    else
+        pip3 install --user pipx 2>/dev/null || true
+    fi
+    # Ensure pipx path is available
+    pipx ensurepath 2>/dev/null || true
+    export PATH="$HOME/.local/bin:$PATH"
+fi
+
+# -----------------------------------------------------------------------------
+# Install aider (required for agents to work)
 # -----------------------------------------------------------------------------
 if ! check_command aider; then
-    log_info "Installing aider (optional)..."
-    # Try multiple methods - aider is optional, don't fail if it doesn't work
-    pip3 install aider-chat --break-system-packages 2>/dev/null \
-        || pip3 install aider-chat --user 2>/dev/null \
-        || pipx install aider-chat 2>/dev/null \
-        || log_warn "Could not install aider - you can install it later with: pipx install aider-chat"
+    log_info "Installing aider..."
+    # pipx is the recommended way on modern Ubuntu (externally managed environments)
+    if command -v pipx &> /dev/null; then
+        pipx install aider-chat 2>/dev/null && log_success "aider installed via pipx"
+    fi
+    
+    # Fallback methods if pipx didn't work
+    if ! check_command aider; then
+        pip3 install aider-chat --break-system-packages 2>/dev/null && log_success "aider installed via pip3" \
+            || pip3 install aider-chat --user 2>/dev/null && log_success "aider installed via pip3 --user" \
+            || log_warn "Could not install aider automatically. Install manually: pipx install aider-chat"
+    fi
+fi
+
+# Verify aider is available
+if check_command aider; then
+    log_success "aider is ready"
+else
+    log_warn "aider not found - agents won't be able to code. Install with: pipx install aider-chat"
 fi
 
 # -----------------------------------------------------------------------------
