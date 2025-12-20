@@ -557,18 +557,41 @@ function FilePanelComponent({ apiBase }: FilePanelProps) {
     : ''
   const [projectDir, setProjectDir] = useState(defaultDir)
   
-  // Fetch project directory from settings on mount if not set
+  // Fetch project directory from settings on mount, fallback to home directory
   useEffect(() => {
     if (!projectDir) {
+      // First try to get projectDir from settings
       fetch(`${apiBase}/api/settings`)
         .then(res => res.json())
         .then(data => {
-          if (data.projectDir) {
+          if (data.projectDir && data.projectDir !== '.') {
             setProjectDir(data.projectDir)
             localStorage.setItem('hivemind-project-dir', data.projectDir)
+          } else {
+            // Fallback to user's home directory
+            fetch(`${apiBase}/api/system/home`)
+              .then(res => res.json())
+              .then(homeData => {
+                if (homeData.home) {
+                  setProjectDir(homeData.home)
+                  localStorage.setItem('hivemind-project-dir', homeData.home)
+                }
+              })
+              .catch(() => {})
           }
         })
-        .catch(() => {})
+        .catch(() => {
+          // If settings fails, try home directory directly
+          fetch(`${apiBase}/api/system/home`)
+            .then(res => res.json())
+            .then(homeData => {
+              if (homeData.home) {
+                setProjectDir(homeData.home)
+                localStorage.setItem('hivemind-project-dir', homeData.home)
+              }
+            })
+            .catch(() => {})
+        })
     }
   }, [apiBase, projectDir])
   

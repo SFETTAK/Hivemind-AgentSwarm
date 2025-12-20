@@ -42,6 +42,12 @@ export async function createServer(config: ServerConfig): Promise<{ app: express
   app.get('/health', (req, res) => res.json({ status: 'ok' }))
   app.get('/ready', (req, res) => res.json({ ready: true }))
   
+  // System info endpoint - returns user's home directory
+  app.get('/api/system/home', (req, res) => {
+    const homeDir = process.env.HOME || process.env.USERPROFILE || '/root'
+    res.json({ home: homeDir })
+  })
+  
   // API routes
   app.use('/api/agents', createAgentRoutes(settings))
   app.use('/api/conductor', createConductorRoutes(settings))
