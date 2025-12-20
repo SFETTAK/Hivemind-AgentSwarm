@@ -11,7 +11,8 @@
 #
 # =============================================================================
 
-set -e
+# Don't exit on errors - we handle them ourselves
+set +e
 
 # Parse arguments
 NO_PROMPT=false
@@ -142,12 +143,15 @@ if ! check_command pnpm; then
 fi
 
 # -----------------------------------------------------------------------------
-# Install aider
+# Install aider (optional - Hivemind works without it)
 # -----------------------------------------------------------------------------
 if ! check_command aider; then
-    log_info "Installing aider..."
-    pip3 install aider-chat --break-system-packages 2>/dev/null || pip3 install aider-chat --user
-    log_success "aider installed"
+    log_info "Installing aider (optional)..."
+    # Try multiple methods - aider is optional, don't fail if it doesn't work
+    pip3 install aider-chat --break-system-packages 2>/dev/null \
+        || pip3 install aider-chat --user 2>/dev/null \
+        || pipx install aider-chat 2>/dev/null \
+        || log_warn "Could not install aider - you can install it later with: pipx install aider-chat"
 fi
 
 # -----------------------------------------------------------------------------
@@ -175,7 +179,8 @@ log_info "Installing dependencies..."
 pnpm install
 
 log_info "Building packages..."
-if ! pnpm build; then
+pnpm build
+if [ $? -ne 0 ]; then
     log_error "Build failed!"
     exit 1
 fi
