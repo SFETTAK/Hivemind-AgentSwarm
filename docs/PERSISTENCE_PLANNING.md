@@ -81,50 +81,66 @@ The game server (Hive server) just hosts it.
 #### Q1.3: Colony lifecycle states
 > What states can a colony be in?
 
-**Proposed states:**
+**Decided states:**
 ```
-┌──────────┐     ┌─────────┐     ┌───────────┐     ┌─────────┐
-│ STARTING │ ──> │ RUNNING │ ──> │ SUSPENDED │ ──> │ STOPPED │
-└──────────┘     └─────────┘     └───────────┘     └─────────┘
-                      │                │
-                      └────────────────┘
-                        (host reconnects)
+┌──────────┐     ┌─────────┐     ┌─────────┐
+│ STARTING │ ──> │ RUNNING │ ──> │ STOPPED │
+└──────────┘     └─────────┘     └─────────┘
+                      │               │
+                      │    ┌──────┐   │
+                      └──> │ IDLE │ <─┘  (no users connected,
+                           └──────┘       agents may still be alive)
 ```
 
-- **STARTING** - Colony initializing, loading state
-- **RUNNING** - Active, host connected, agents working  
-- **SUSPENDED** - Host disconnected, agents still alive in tmux. Can resume.
-- **STOPPED** - Explicitly ended. Agents killed. Save file remains for reload.
+- **STARTING** - Colony initializing, loading state from disk
+- **RUNNING** - Active, users connected, agents working, continuous saves
+- **IDLE** - No users connected, agents may still be running in tmux
+- **STOPPED** - Explicitly ended. Agents killed. Portable save file remains.
 
-**Questions:**
-- [ ] Can a SUSPENDED colony be resumed by someone other than host?
-- [ ] How long before SUSPENDED auto-stops? (Or does it run forever until explicit stop?)
-- [ ] Auto-save on state transitions?
+**Decision:** ✅ Simplified states
 
-**Decision:** _____________
+**Key insights:**
+```
+- Colony is fundamentally just files (reads/writes)
+- If running, it's always saving - continuous persistence
+- IDLE vs RUNNING is really just "are users connected?"
+- STOPPED is the portable state - can move colony to another machine
+- File locking prevents two people opening same colony simultaneously
+  → Instead, prompt to JOIN the already-open colony
+```
+
+**Persistence model:**
+```
+Running colony = files on disk + session state in RAM + agents in tmux
+Stopped colony = just files on disk (portable, can move anywhere)
+```
 
 ---
 
 #### Q1.4: What defines a "Colony"?
 
-**Proposed model:**
+**Decided model:**
 ```
 COLONY (the world - persistent save file + runtime state)
-├── Colony ID (unique, generated once)
-├── Name (user-friendly, e.g. "awesome-app")
+├── Colony ID (unique, stable forever)
+├── Name (human-friendly, e.g. "awesome-app")
 ├── Primary working directory
 ├── Additional resource directories (optional)
 ├── State
-│   ├── Lifecycle status (STARTING/RUNNING/SUSPENDED/STOPPED)
+│   ├── Lifecycle status (STARTING/RUNNING/IDLE/STOPPED)
 │   ├── Active agents
 │   ├── Connected users
 │   ├── Cost tracking
-│   └── Last checkpoint
+│   └── File lock (prevents duplicate opens)
 ├── Settings
 │   ├── Model tier (cruise/fast/turbo/cosmic)
 │   ├── Default agents to spawn on start
 │   └── Sharing/collab config
-├── Host user
+├── Access Control
+│   ├── Owner (host)
+│   ├── Admins (can start/stop, manage users)
+│   ├── Contributors (read/write, can use agents)
+│   └── Viewers (read-only)
 ├── Created timestamp
 └── Last accessed timestamp
 ```
@@ -136,67 +152,137 @@ COLONY (the world - persistent save file + runtime state)
 3. Optionally add additional directories/resources
 4. Name the colony
 5. Colony spins up in isolated ENV
-6. Save file created
+6. Save file created with file lock
 ```
 
-**Questions:**
-- [ ] Is Colony ID stable forever, or regenerated on "Save As" / fork?
-- [ ] Can a Colony exist as just a save file (STOPPED) with no active runtime?
-- [ ] Multiple colonies on same working directory - allowed or warned?
+**Decision:** ✅ Confirmed
 
-**Decision:** _____________
+**Key decisions:**
+```
+- Colony ID: Stable forever (unique identifier for save file)
+- Colony can exist as STOPPED save file (portable, can move to new machine)
+- Multiple colonies on same directory: Allowed (we'll see if it's a bad idea)
+- File locking: Prevents two people opening same colony
+  → If locked, prompt: "Colony already open. Join session?"
+```
+
+**Access tiers:**
+| Role | Start/Stop | Manage Users | Deploy Agents | Send Commands | View |
+|------|------------|--------------|---------------|---------------|------|
+| Owner | ✅ | ✅ | ✅ | ✅ | ✅ |
+| Admin | ✅ | ✅ | ✅ | ✅ | ✅ |
+| Contributor | ❌ | ❌ | ✅ | ✅ | ✅ |
+| Viewer | ❌ | ❌ | ❌ | ❌ | ✅ |
 
 ---
 
 ### 2. Save File Structure
 
-#### Q2.1: Where do Hivemind files live?
+#### Q2.1: Colony folder structure
 
-**Options:**
-- [ ] **A) Global home** - `~/.hivemind/projects/<project-id>/`
-- [ ] **B) Per-project** - `<project-dir>/.hivemind/`
-- [ ] **C) Configurable** - Default global, can override per-project
-- [ ] **D) Hybrid** - Config in project, state in global
+**Decision:** ✅ Colony is a folder (container)
 
-**Decision:** _____________
-
-**Pros/Cons:**
 ```
-Global home:
-  ✅ Project folder stays clean
-  ✅ One place to backup all Hivemind data
-  ❌ Harder to "pack up and go" with project
-  ❌ Path breaks if project moves
+my-colony/                          # The Colony folder (portable unit)
+│
+├── colony.hive                     # Colony manifest - the "save file"
+│
+├── honey/                          # 🍯 HONEY - The actual project files
+│   ├── src/                        #    What we make and build
+│   ├── package.json                #    The real work output
+│   └── ...                         #    (or symlink to external dir)
+│
+├── honeycomb/                      # 🪺 HONEYCOMB - Shared knowledge
+│   ├── memory/                     #    Agent memories, context
+│   ├── prompts/                    #    Custom prompts for this colony
+│   ├── messages.md                 #    Inter-agent communication log
+│   ├── decisions.md                #    Decision history
+│   └── status.md                   #    Current state, who's doing what
+│
+└── pollen/                         # 🌸 POLLEN - Tools & resources
+    ├── tools/                      #    Custom tools, scripts
+    ├── imports/                    #    Imported resources
+    └── generated/                  #    AI-generated resources
+```
 
-Per-project:
-  ✅ Portable with project
-  ✅ Easy to version control (or .gitignore)
-  ❌ Clutters project folder
-  ❌ Different users have different Hivemind states
+**External directories (symlinks):**
+```
+honey/ can BE a symlink:
+  my-colony/honey -> /home/user/projects/real-project/
 
-Hybrid:
-  ✅ Best of both?
-  ❌ Complexity
+Or contain symlinks:
+  my-colony/honey/
+  ├── src/                    # Local
+  └── docs -> ~/Documents/project-docs/   # Symlinked
+```
+
+**Key insight:** The colony is self-contained and portable, but can reach out to external directories via symlinks. Move the colony folder = move everything (symlinks may break, but that's expected).
+
+---
+
+#### Q2.2: What's in `colony.hive`?
+
+The manifest file - human-readable, version-controllable:
+
+**Format decision:** YAML (human-friendly, comments allowed)
+
+```yaml
+# colony.hive - Colony manifest
+version: 1
+id: "col_abc123def456"
+name: "My Awesome Project"
+created: "2024-12-19T10:00:00Z"
+last_accessed: "2024-12-19T15:30:00Z"
+
+# Directory configuration
+directories:
+  honey: "./honey"                    # Can be relative or absolute
+  honeycomb: "./honeycomb"
+  pollen: "./pollen"
+  external:                           # Additional linked directories
+    - path: "~/Documents/shared-docs"
+      alias: "docs"
+      mode: "read-write"
+
+# Default settings
+defaults:
+  model_tier: "fast"
+  agents:
+    - role: forge
+      task: general
+    - role: sentinel
+      task: tests
+
+# Sharing configuration  
+sharing:
+  enabled: true
+  mode: "invite-only"              # invite-only | password | open
+  max_users: 5
+
+# Access control
+access:
+  owner: "steven"
+  admins: ["alex"]
+  contributors: []
+  viewers: []
 ```
 
 ---
 
-#### Q2.2: What goes in each file?
+#### Q2.3: Runtime state files (in honeycomb/)
 
-**Proposed file breakdown:**
+| File | Purpose | Format |
+|------|---------|--------|
+| `honeycomb/state.json` | Runtime state (agents, users, costs) | JSON |
+| `honeycomb/messages.md` | Inter-agent messages | Markdown |
+| `honeycomb/status.md` | Current status board | Markdown |
+| `honeycomb/decisions.md` | Decision log | Markdown |
+| `honeycomb/memory/*.json` | Agent memories | JSON |
+| `honeycomb/prompts/*.md` | Custom prompts | Markdown |
 
-| File | Purpose | Format | Versioned? |
-|------|---------|--------|------------|
-| `project.hive` | Project manifest/blueprint | YAML/JSON | ✅ Optional |
-| `state.json` | Runtime session state | JSON | ❌ |
-| `history.jsonl` | Chat/decision history | JSON Lines | ❌ |
-| `messages.md` | Inter-agent messages | Markdown | ❌ |
-| `checkpoints/` | Auto-save snapshots | JSON | ❌ |
-
-**Questions:**
-- [ ] Should `project.hive` be YAML (human-friendly) or JSON (machine-friendly)?
-- [ ] Is `messages.md` for humans or machines? Both?
-- [ ] What's the checkpoint strategy? Time-based? Event-based?
+**Questions remaining:**
+- [ ] Lock file location? (`colony.lock` in root?)
+- [ ] Checkpoint/backup strategy?
 
 **Decision:** _____________
 
@@ -256,7 +342,17 @@ _To be filled in after structure is decided._
 
 | Date | Question | Decision | Rationale |
 |------|----------|----------|-----------|
-| | | | |
+| 2024-12-19 | Terminology | **Colony** | Hive-themed, differentiates from "project" (the code) |
+| 2024-12-19 | Multiple colonies | **Allowed** | Isolated ENVs, can share files, communicate via messages |
+| 2024-12-19 | Persistence model | **Hybrid** | Continuous save while running, portable when stopped |
+| 2024-12-19 | Lifecycle states | **STARTING/RUNNING/IDLE/STOPPED** | Simple, IDLE = no users, STOPPED = portable |
+| 2024-12-19 | Colony identity | **ID (stable) + Name (human)** | ID never changes, name is friendly |
+| 2024-12-19 | File locking | **Lock on open, prompt to join** | Prevents conflicts, encourages collaboration |
+| 2024-12-19 | Access control | **Owner/Admin/Contributor/Viewer** | Tiered permissions |
+| 2024-12-19 | Same directory colonies | **Allowed (experiment)** | May be useful, we'll see |
+| 2024-12-19 | Colony structure | **Folder with honey/honeycomb/pollen** | Thematic, organized by purpose |
+| 2024-12-19 | Manifest format | **YAML (colony.hive)** | Human-readable, supports comments |
+| 2024-12-19 | External dirs | **Symlinks supported** | Flexible, honey can be symlink or contain symlinks |
 
 ---
 

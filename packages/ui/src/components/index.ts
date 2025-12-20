@@ -5,12 +5,12 @@ export { DraggablePanel, usePanelLayout, type DraggablePanelProps, type PanelLay
 export { Header, PROFILES, MODEL_CONFIGS, type HeaderProps, type SpeedLevel, type ProfileKey } from './Header'
 export { TerminalPanel, redactSecrets, type TerminalPanelProps } from './TerminalPanel'
 export { Commentator, type CommentatorProps } from './Commentator'
+export { ConductorPanel, type ConductorPanelProps } from './ConductorPanel'
+export { Controls, type ControlsProps } from './Controls'
+export { NetworkGraph, type NetworkGraphProps } from './NetworkGraph'
 
 // TODO: Migrate these:
-// export { ConductorPanel } from './ConductorPanel'
-// export { NetworkGraph } from './NetworkGraph'
 // export { FilePanel } from './FilePanel'
 // export { Settings } from './Settings'
-// export { Controls } from './Controls'
 // export { FloatingAgentChat } from './FloatingAgentChat'
 
