@@ -8,9 +8,8 @@ export { Commentator, type CommentatorProps } from './Commentator'
 export { ConductorPanel, type ConductorPanelProps } from './ConductorPanel'
 export { Controls, type ControlsProps } from './Controls'
 export { NetworkGraph, type NetworkGraphProps } from './NetworkGraph'
+export { FilePanel, type FilePanelProps } from './FilePanel'
+export { FloatingAgentChat, type FloatingAgentChatProps } from './FloatingAgentChat'
 
-// TODO: Migrate these:
-// export { FilePanel } from './FilePanel'
-// export { Settings } from './Settings'
-// export { FloatingAgentChat } from './FloatingAgentChat'
+// Settings component not yet migrated (large, complex)
 

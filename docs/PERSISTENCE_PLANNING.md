@@ -216,7 +216,44 @@ Or contain symlinks:
   └── docs -> ~/Documents/project-docs/   # Symlinked
 ```
 
-**Key insight:** The colony is self-contained and portable, but can reach out to external directories via symlinks. Move the colony folder = move everything (symlinks may break, but that's expected).
+**🔑 Key Architecture Insight:**
+
+```
+┌─────────────────────────────────────────────────────────────────┐
+│                        COLONY FOLDER                            │
+│  (can live anywhere - USB, cloud drive, ~/.hivemind/, etc.)     │
+│                                                                 │
+│   colony.hive     - manifest                                    │
+│   colony.lock     - who has it open                             │
+│   honeycomb/      - session knowledge                           │
+│   pollen/         - tools & resources                           │
+│   honey/ ─────────────────────┐                                 │
+└───────────────────────────────│─────────────────────────────────┘
+                                │
+                                │ (symlink or path reference)
+                                ▼
+┌─────────────────────────────────────────────────────────────────┐
+│                     ACTUAL CODEBASE                             │
+│  (can be ANYWHERE - local, WSL, remote mount, NAS, etc.)        │
+│                                                                 │
+│   /home/user/projects/my-app/                                   │
+│   /mnt/c/Users/steve/code/my-app/                               │
+│   //server/share/projects/my-app/                               │
+└─────────────────────────────────────────────────────────────────┘
+
+┌─────────────────────────────────────────────────────────────────┐
+│                     HIVEMIND SERVER                             │
+│  (can run anywhere - local, WSL, VPS, Docker, etc.)             │
+│                                                                 │
+│   Just needs: access to colony folder + access to codebase      │
+└─────────────────────────────────────────────────────────────────┘
+```
+
+**The colony folder is JUST session data.** It doesn't contain the actual code - it references it. This means:
+- Colony can live on a USB drive
+- Codebase can be on WSL, a network share, anywhere
+- Server can run on a different machine entirely
+- Everything is decoupled
 
 ---
 
@@ -280,9 +317,72 @@ access:
 | `honeycomb/memory/*.json` | Agent memories | JSON |
 | `honeycomb/prompts/*.md` | Custom prompts | Markdown |
 
-**Questions remaining:**
-- [ ] Lock file location? (`colony.lock` in root?)
-- [ ] Checkpoint/backup strategy?
+---
+
+#### Q2.4: Lock file
+
+**Decision:** ✅ `colony.lock` in root folder
+
+```
+my-colony/
+├── colony.hive
+├── colony.lock          # <-- Lock file here
+├── honey/
+├── honeycomb/
+└── pollen/
+```
+
+**Lock file contents:**
+```json
+{
+  "holder": "steven",
+  "host": "192.168.1.50",
+  "port": 3000,
+  "pid": 12345,
+  "locked_at": "2024-12-19T10:00:00Z"
+}
+```
+
+**Behavior:**
+- On open: Check for lock → if exists, offer to join that session
+- On close: Remove lock file
+- Stale lock detection: If PID not running or host unreachable, allow override
+
+---
+
+#### Q2.5: Version control / History (Mercurial-like features)
+
+**Questions:**
+- [ ] What level of history do we want?
+  - Just honeycomb state? (who did what, when)
+  - Snapshots of full colony state?
+  - Integration with git for the codebase?
+  
+- [ ] Rollback capability?
+  - "Undo last agent action"
+  - "Restore colony to 2 hours ago"
+  
+- [ ] Branching?
+  - "Fork this colony state, try something different"
+  - Merge back?
+
+**Proposed MVP:**
+```
+honeycomb/
+├── history/
+│   ├── 2024-12-19T10-00-00.snapshot.json   # Periodic snapshots
+│   ├── 2024-12-19T11-00-00.snapshot.json
+│   └── ...
+└── changelog.jsonl                          # Append-only event log
+```
+
+**Changelog format (JSON Lines):**
+```jsonl
+{"ts":"2024-12-19T10:05:00Z","type":"agent_spawned","agent":"forge-api","user":"steven"}
+{"ts":"2024-12-19T10:06:00Z","type":"command_sent","agent":"forge-api","cmd":"add pagination","user":"steven"}
+{"ts":"2024-12-19T10:30:00Z","type":"agent_completed","agent":"forge-api","commits":3}
+{"ts":"2024-12-19T10:31:00Z","type":"user_joined","user":"alex"}
+```
 
 **Decision:** _____________
 
