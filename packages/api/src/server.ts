@@ -95,6 +95,38 @@ export async function createServer(config: ServerConfig): Promise<{ app: express
     res.json({ messages: '' })
   })
   
+  // GET /api/costs - Cost tracking (stub)
+  app.get('/api/costs', (req, res) => {
+    // TODO: Implement actual cost tracking from LLM usage
+    res.json({
+      total: '$0.00',
+      breakdown: {
+        input_tokens: 0,
+        output_tokens: 0,
+        requests: 0,
+      },
+      byAgent: {},
+      byModel: {},
+    })
+  })
+  
+  // POST /api/costs/reset - Reset cost tracking
+  app.post('/api/costs/reset', (req, res) => {
+    // TODO: Implement actual cost reset
+    res.json({ success: true, message: 'Costs reset' })
+  })
+  
+  // Cursor IDE integration endpoints (stubs)
+  app.get('/api/cursor/messages', (req, res) => {
+    // For Cursor IDE integration - not MVP
+    res.json({ messages: [] })
+  })
+  
+  app.post('/api/cursor/message', (req, res) => {
+    // For Cursor IDE integration - not MVP
+    res.json({ success: true, message: 'Message received' })
+  })
+  
   // Legacy compatibility routes
   app.get('/api/activity', async (req, res) => {
     // Redirect to swarm activity

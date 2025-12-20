@@ -135,6 +135,44 @@ export function createSwarmRoutes(settings: SettingsManager): Router {
     res.json({ roles: AGENT_DEFINITIONS })
   })
   
+  // Pause swarm (stub - pauses polling/activity, agents keep running)
+  router.post('/pause', async (req, res) => {
+    // TODO: Implement actual pause logic (could set a flag that stops new tasks)
+    res.json({ 
+      success: true, 
+      message: 'Swarm paused',
+      paused: true 
+    })
+  })
+  
+  // Emergency stop - kill all agents
+  router.post('/stop', async (req, res) => {
+    const cfg = settings.get()
+    
+    try {
+      const agents = await getAgents(cfg.tmuxPrefix)
+      const { killSession } = await import('@hivemind/connectors')
+      
+      let killed = 0
+      for (const agent of agents) {
+        try {
+          await killSession(agent.id)
+          killed++
+        } catch {
+          // Agent may already be dead
+        }
+      }
+      
+      res.json({ 
+        success: true, 
+        message: `Emergency stop: killed ${killed} agents`,
+        killed 
+      })
+    } catch (e: any) {
+      res.status(500).json({ error: e.message })
+    }
+  })
+  
   return router
 }
 
