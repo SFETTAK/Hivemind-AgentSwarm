@@ -6,9 +6,8 @@
 # One-line install:
 #   curl -fsSL https://raw.githubusercontent.com/SFETTAK/Hivemind-AgentSwarm/main/scripts/install.sh | bash
 #
-# Or download and run:
-#   chmod +x install.sh
-#   ./install.sh
+# Options:
+#   --no-prompt    Skip interactive prompts (for automated installs)
 #
 # =============================================================================
 
@@ -18,7 +17,10 @@ set -e
 NO_PROMPT=false
 for arg in "$@"; do
     case $arg in
-        --no-prompt) NO_PROMPT=true ;;
+        --no-prompt)
+            NO_PROMPT=true
+            shift
+            ;;
     esac
 done
 
@@ -83,7 +85,12 @@ install_linux_deps() {
             sudo apt-get install -y nodejs
         fi
     elif command -v dnf &> /dev/null; then
-        sudo dnf install -y git curl tmux python3 python3-pip nodejs
+        sudo dnf install -y git curl tmux python3 python3-pip
+        # Install Node 20 on Fedora/RHEL
+        if ! check_command node || [[ $(node -v | cut -d'.' -f1 | tr -d 'v') -lt 20 ]]; then
+            curl -fsSL https://rpm.nodesource.com/setup_20.x | sudo bash -
+            sudo dnf install -y nodejs
+        fi
     elif command -v pacman &> /dev/null; then
         sudo pacman -Sy --noconfirm git curl tmux python python-pip nodejs npm
     else
@@ -100,6 +107,11 @@ install_macos_deps() {
     if ! check_command brew; then
         log_info "Installing Homebrew..."
         /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
+        
+        # Add brew to path for this session
+        if [[ -f "/opt/homebrew/bin/brew" ]]; then
+            eval "$(/opt/homebrew/bin/brew shellenv)"
+        fi
     fi
     
     brew install git curl tmux python node
@@ -124,7 +136,8 @@ esac
 # -----------------------------------------------------------------------------
 if ! check_command pnpm; then
     log_info "Installing pnpm..."
-    npm install -g pnpm
+    # Try with sudo first, fall back to user install
+    sudo npm install -g pnpm 2>/dev/null || npm install -g pnpm
     log_success "pnpm installed"
 fi
 
@@ -133,7 +146,7 @@ fi
 # -----------------------------------------------------------------------------
 if ! check_command aider; then
     log_info "Installing aider..."
-    pip3 install aider-chat --break-system-packages 2>/dev/null || pip3 install aider-chat
+    pip3 install aider-chat --break-system-packages 2>/dev/null || pip3 install aider-chat --user
     log_success "aider installed"
 fi
 
@@ -145,10 +158,13 @@ INSTALL_DIR="$HOME/Hivemind-AgentSwarm"
 if [ -d "$INSTALL_DIR" ]; then
     log_info "Updating existing installation..."
     cd "$INSTALL_DIR"
-    git pull
+    git pull || log_warn "Git pull failed, continuing with existing code"
 else
     log_info "Cloning Hivemind..."
-    git clone https://github.com/SFETTAK/Hivemind-AgentSwarm.git "$INSTALL_DIR"
+    if ! git clone https://github.com/SFETTAK/Hivemind-AgentSwarm.git "$INSTALL_DIR"; then
+        log_error "Failed to clone repository"
+        exit 1
+    fi
     cd "$INSTALL_DIR"
 fi
 
@@ -159,14 +175,22 @@ log_info "Installing dependencies..."
 pnpm install
 
 log_info "Building packages..."
-pnpm build
+if ! pnpm build; then
+    log_error "Build failed!"
+    exit 1
+fi
+
+log_success "Build complete"
 
 # -----------------------------------------------------------------------------
 # Create settings template
 # -----------------------------------------------------------------------------
 if [ ! -f "$INSTALL_DIR/settings.json" ]; then
-    log_info "Creating settings.json..."
-    cat > "$INSTALL_DIR/settings.json" << 'EOF'
+    log_info "Creating settings.json from template..."
+    if [ -f "$INSTALL_DIR/settings.example.json" ]; then
+        cp "$INSTALL_DIR/settings.example.json" "$INSTALL_DIR/settings.json"
+    else
+        cat > "$INSTALL_DIR/settings.json" << 'EOF'
 {
   "openrouterApiKey": "",
   "anthropicApiKey": "",
@@ -177,16 +201,17 @@ if [ ! -f "$INSTALL_DIR/settings.json" ]; then
   "speedLevel": 2
 }
 EOF
+    fi
     log_warn "Please edit settings.json to add your API key"
 fi
 
 # -----------------------------------------------------------------------------
-# Create launcher script
+# Create launcher scripts
 # -----------------------------------------------------------------------------
-LAUNCHER="$HOME/.local/bin/hivemind"
 mkdir -p "$HOME/.local/bin"
 
-cat > "$LAUNCHER" << 'EOF'
+# Main launcher
+cat > "$HOME/.local/bin/hivemind" << 'EOF'
 #!/bin/bash
 # Hivemind Launcher
 
@@ -210,7 +235,6 @@ for i in {1..10}; do
 done
 
 # Start dashboard
-echo "Starting dashboard..."
 echo ""
 echo "========================================"
 echo "  🐝 Hivemind is running!"
@@ -226,17 +250,9 @@ cd "$HIVEMIND_DIR/apps/dashboard"
 npx vite --host 0.0.0.0
 EOF
 
-chmod +x "$LAUNCHER"
+chmod +x "$HOME/.local/bin/hivemind"
 
-# Add to PATH if not already
-if [[ ":$PATH:" != *":$HOME/.local/bin:"* ]]; then
-    echo 'export PATH="$HOME/.local/bin:$PATH"' >> "$HOME/.bashrc"
-    echo 'export PATH="$HOME/.local/bin:$PATH"' >> "$HOME/.zshrc" 2>/dev/null || true
-fi
-
-# -----------------------------------------------------------------------------
-# Create stop script
-# -----------------------------------------------------------------------------
+# Stop script
 cat > "$HOME/.local/bin/hivemind-stop" << 'EOF'
 #!/bin/bash
 # Stop all Hivemind services
@@ -255,6 +271,13 @@ echo "Hivemind stopped."
 EOF
 
 chmod +x "$HOME/.local/bin/hivemind-stop"
+
+# Add to PATH if not already
+if [[ ":$PATH:" != *":$HOME/.local/bin:"* ]]; then
+    echo 'export PATH="$HOME/.local/bin:$PATH"' >> "$HOME/.bashrc"
+    echo 'export PATH="$HOME/.local/bin:$PATH"' >> "$HOME/.zshrc" 2>/dev/null || true
+    export PATH="$HOME/.local/bin:$PATH"
+fi
 
 # -----------------------------------------------------------------------------
 # Done!
@@ -285,13 +308,13 @@ echo "  Documentation:"
 echo "    https://github.com/SFETTAK/Hivemind-AgentSwarm"
 echo ""
 
-# Prompt to start (unless --no-prompt was passed)
+# Prompt to start (unless --no-prompt)
 if [ "$NO_PROMPT" = false ]; then
     read -p "Start Hivemind now? [Y/n] " -n 1 -r
     echo
     if [[ $REPLY =~ ^[Yy]$ ]] || [[ -z $REPLY ]]; then
-        export PATH="$HOME/.local/bin:$PATH"
         exec hivemind
     fi
+else
+    log_info "Installation complete. Run 'hivemind' to start."
 fi
-
