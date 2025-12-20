@@ -14,6 +14,14 @@
 
 set -e
 
+# Parse arguments
+NO_PROMPT=false
+for arg in "$@"; do
+    case $arg in
+        --no-prompt) NO_PROMPT=true ;;
+    esac
+done
+
 # Colors
 RED='\033[0;31m'
 GREEN='\033[0;32m'
@@ -277,11 +285,13 @@ echo "  Documentation:"
 echo "    https://github.com/SFETTAK/Hivemind-AgentSwarm"
 echo ""
 
-# Prompt to start
-read -p "Start Hivemind now? [Y/n] " -n 1 -r
-echo
-if [[ $REPLY =~ ^[Yy]$ ]] || [[ -z $REPLY ]]; then
-    export PATH="$HOME/.local/bin:$PATH"
-    exec hivemind
+# Prompt to start (unless --no-prompt was passed)
+if [ "$NO_PROMPT" = false ]; then
+    read -p "Start Hivemind now? [Y/n] " -n 1 -r
+    echo
+    if [[ $REPLY =~ ^[Yy]$ ]] || [[ -z $REPLY ]]; then
+        export PATH="$HOME/.local/bin:$PATH"
+        exec hivemind
+    fi
 fi
 

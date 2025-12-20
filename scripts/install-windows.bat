@@ -1,174 +1,291 @@
 @echo off
 :: =============================================================================
-:: HIVEMIND WINDOWS INSTALLER
+:: HIVEMIND WINDOWS INSTALLER - IMPROVED
 :: =============================================================================
 ::
-:: This script installs WSL2 + Ubuntu, then runs the Linux installer inside WSL.
+:: One-click installation for Windows users.
+:: Installs WSL2 + Ubuntu, then sets up Hivemind automatically.
 ::
-:: USAGE:
-::   1. Right-click this file
-::   2. Select "Run as administrator"
-::   3. Follow prompts
-::   4. Restart when asked
-::   5. Run again after restart to complete setup
+:: USAGE: Right-click → Run as administrator
 ::
 :: =============================================================================
 
 setlocal EnableDelayedExpansion
+title Hivemind Installer
 
+:: -----------------------------------------------------------------------------
 :: Check for admin privileges
+:: -----------------------------------------------------------------------------
 net session >nul 2>&1
 if %errorLevel% neq 0 (
     echo.
-    echo ========================================
-    echo   ERROR: Administrator Required
-    echo ========================================
-    echo.
-    echo Please right-click this file and select
-    echo "Run as administrator"
+    echo  ╔════════════════════════════════════════╗
+    echo  ║   ERROR: Administrator Required        ║
+    echo  ╠════════════════════════════════════════╣
+    echo  ║                                        ║
+    echo  ║   Please RIGHT-CLICK this file and    ║
+    echo  ║   select "Run as administrator"       ║
+    echo  ║                                        ║
+    echo  ╚════════════════════════════════════════╝
     echo.
     pause
     exit /b 1
 )
 
+:: -----------------------------------------------------------------------------
+:: Welcome screen
+:: -----------------------------------------------------------------------------
+cls
 echo.
-echo ========================================
-echo   Hivemind Installer for Windows
-echo   Version 1.0
-echo ========================================
+echo  ╔════════════════════════════════════════╗
+echo  ║                                        ║
+echo  ║   🐝 HIVEMIND INSTALLER FOR WINDOWS   ║
+echo  ║                                        ║
+echo  ║   This will install:                  ║
+echo  ║   • Windows Subsystem for Linux       ║
+echo  ║   • Ubuntu                            ║
+echo  ║   • Hivemind Agent Swarm              ║
+echo  ║                                        ║
+echo  ║   Estimated time: 10-15 minutes       ║
+echo  ║                                        ║
+echo  ╚════════════════════════════════════════╝
 echo.
+echo  Press any key to begin installation...
+pause >nul
 
-:: Check if WSL is installed
+:: -----------------------------------------------------------------------------
+:: Step 1: Check/Install WSL
+:: -----------------------------------------------------------------------------
+echo.
+echo  [Step 1/4] Checking Windows Subsystem for Linux...
+
 wsl --status >nul 2>&1
 if %errorLevel% neq 0 (
-    goto :install_wsl
+    echo.
+    echo  Installing WSL... This may take 5-10 minutes.
+    echo.
+    
+    wsl --install --no-distribution
+    
+    if %errorLevel% neq 0 (
+        echo.
+        echo  ERROR: WSL installation failed.
+        echo  Make sure Windows is fully updated and try again.
+        echo.
+        pause
+        exit /b 1
+    )
+    
+    echo.
+    echo  ╔════════════════════════════════════════╗
+    echo  ║   WSL Installed - RESTART REQUIRED     ║
+    echo  ╠════════════════════════════════════════╣
+    echo  ║                                        ║
+    echo  ║   Your computer will restart in 60    ║
+    echo  ║   seconds.                            ║
+    echo  ║                                        ║
+    echo  ║   After restart, RUN THIS INSTALLER   ║
+    echo  ║   AGAIN to continue.                  ║
+    echo  ║                                        ║
+    echo  ╚════════════════════════════════════════╝
+    echo.
+    echo  Press any key to restart now, or wait 60 seconds...
+    timeout /t 60
+    shutdown /r /t 0
+    exit /b 0
+) else (
+    echo  WSL is already installed. ✓
 )
 
-:: Check if Ubuntu is installed
-wsl -l | findstr /i "Ubuntu" >nul 2>&1
+:: -----------------------------------------------------------------------------
+:: Step 2: Check/Install Ubuntu
+:: -----------------------------------------------------------------------------
+echo.
+echo  [Step 2/4] Checking Ubuntu...
+
+wsl -l -q 2>nul | findstr /i "Ubuntu" >nul 2>&1
 if %errorLevel% neq 0 (
-    goto :install_ubuntu
+    echo.
+    echo  Installing Ubuntu...
+    echo.
+    
+    wsl --install -d Ubuntu --no-launch
+    
+    if %errorLevel% neq 0 (
+        echo  ERROR: Ubuntu installation failed.
+        pause
+        exit /b 1
+    )
+    
+    echo.
+    echo  ╔════════════════════════════════════════╗
+    echo  ║   IMPORTANT: Ubuntu Setup Required     ║
+    echo  ╠════════════════════════════════════════╣
+    echo  ║                                        ║
+    echo  ║   A new window will open.             ║
+    echo  ║                                        ║
+    echo  ║   You MUST:                           ║
+    echo  ║   1. Wait for it to finish setup      ║
+    echo  ║   2. Enter a username (lowercase)     ║
+    echo  ║   3. Enter a password (twice)         ║
+    echo  ║   4. Type 'exit' and press Enter      ║
+    echo  ║                                        ║
+    echo  ║   DO NOT just close the window!       ║
+    echo  ║                                        ║
+    echo  ╚════════════════════════════════════════╝
+    echo.
+    echo  Press any key to open Ubuntu setup...
+    pause >nul
+    
+    :: Launch Ubuntu and wait for user to configure it
+    start /wait wsl -d Ubuntu
+    
+    :: Verify it worked
+    wsl -d Ubuntu -e whoami >nul 2>&1
+    if %errorLevel% neq 0 (
+        echo.
+        echo  ERROR: Ubuntu setup was not completed.
+        echo  Please run this installer again.
+        pause
+        exit /b 1
+    )
+    
+    echo.
+    echo  Ubuntu configured successfully! ✓
+) else (
+    echo  Ubuntu is already installed. ✓
 )
 
-:: WSL and Ubuntu are ready, install Hivemind
-goto :install_hivemind
-
 :: -----------------------------------------------------------------------------
-:: STEP 1: Install WSL
+:: Step 3: Install Hivemind inside WSL
 :: -----------------------------------------------------------------------------
-:install_wsl
-echo [1/3] Installing Windows Subsystem for Linux...
 echo.
-echo This may take a few minutes...
+echo  [Step 3/4] Installing Hivemind...
+echo.
+echo  This will take a few minutes. Please wait...
 echo.
 
-wsl --install --no-distribution
+:: First update apt (required on fresh Ubuntu)
+wsl -d Ubuntu -e bash -c "sudo apt-get update -qq"
+
+:: Run the installer with --no-prompt to avoid nested prompts
+wsl -d Ubuntu -e bash -c "curl -fsSL https://raw.githubusercontent.com/SFETTAK/Hivemind-AgentSwarm/main/scripts/install.sh | bash -s -- --no-prompt"
 
 if %errorLevel% neq 0 (
     echo.
-    echo ERROR: WSL installation failed.
-    echo Please ensure Windows is up to date and try again.
+    echo  ╔════════════════════════════════════════╗
+    echo  ║   Installation had issues             ║
+    echo  ╠════════════════════════════════════════╣
+    echo  ║                                        ║
+    echo  ║   Check the output above for errors.  ║
+    echo  ║                                        ║
+    echo  ║   Common fixes:                       ║
+    echo  ║   • Run this installer again          ║
+    echo  ║   • Open Ubuntu and run:              ║
+    echo  ║     hivemind                          ║
+    echo  ║                                        ║
+    echo  ╚════════════════════════════════════════╝
+    echo.
     pause
     exit /b 1
 )
 
-echo.
-echo ========================================
-echo   WSL Installed Successfully!
-echo ========================================
-echo.
-echo Your computer needs to restart to complete
-echo the WSL installation.
-echo.
-echo After restarting, run this installer again
-echo to continue the setup.
-echo.
-pause
-shutdown /r /t 30 /c "Restarting to complete WSL installation. Run Hivemind installer again after restart."
-exit /b 0
-
 :: -----------------------------------------------------------------------------
-:: STEP 2: Install Ubuntu
+:: Step 4: Create desktop shortcut
 :: -----------------------------------------------------------------------------
-:install_ubuntu
-echo [2/3] Installing Ubuntu...
 echo.
+echo  [Step 4/4] Creating desktop shortcut...
 
-wsl --install -d Ubuntu
+:: Get the path to hivemind in WSL
+set "SHORTCUT_PATH=%USERPROFILE%\Desktop\Hivemind.lnk"
 
-if %errorLevel% neq 0 (
-    echo.
-    echo ERROR: Ubuntu installation failed.
-    echo.
-    pause
-    exit /b 1
-)
-
-echo.
-echo ========================================
-echo   Ubuntu Installed!
-echo ========================================
-echo.
-echo Please complete the Ubuntu setup:
-echo   1. A new window will open
-echo   2. Create a username and password
-echo   3. Close the window when done
-echo   4. Then press any key here to continue
-echo.
-pause
-
-:: -----------------------------------------------------------------------------
-:: STEP 3: Install Hivemind
-:: -----------------------------------------------------------------------------
-:install_hivemind
-echo [3/3] Installing Hivemind...
-echo.
-
-:: Run the Linux installer inside WSL
-wsl -d Ubuntu -e bash -c "curl -fsSL https://raw.githubusercontent.com/SFETTAK/Hivemind-AgentSwarm/main/scripts/install.sh | bash"
-
-if %errorLevel% neq 0 (
-    echo.
-    echo ERROR: Hivemind installation failed.
-    echo Please check the output above for details.
-    echo.
-    pause
-    exit /b 1
-)
-
-:: Create Windows shortcut
-echo.
-echo Creating desktop shortcut...
-
-:: Create VBS script to make shortcut
-echo Set oWS = WScript.CreateObject("WScript.Shell") > "%TEMP%\CreateShortcut.vbs"
-echo sLinkFile = oWS.SpecialFolders("Desktop") ^& "\Hivemind.lnk" >> "%TEMP%\CreateShortcut.vbs"
-echo Set oLink = oWS.CreateShortcut(sLinkFile) >> "%TEMP%\CreateShortcut.vbs"
-echo oLink.TargetPath = "wsl.exe" >> "%TEMP%\CreateShortcut.vbs"
-echo oLink.Arguments = "-d Ubuntu -e bash -l -c hivemind" >> "%TEMP%\CreateShortcut.vbs"
-echo oLink.Description = "Launch Hivemind Agent Swarm" >> "%TEMP%\CreateShortcut.vbs"
-echo oLink.WorkingDirectory = "%%USERPROFILE%%" >> "%TEMP%\CreateShortcut.vbs"
-echo oLink.Save >> "%TEMP%\CreateShortcut.vbs"
+:: Create VBScript to make the shortcut
+(
+echo Set oWS = WScript.CreateObject^("WScript.Shell"^)
+echo sLinkFile = "%SHORTCUT_PATH%"
+echo Set oLink = oWS.CreateShortcut^(sLinkFile^)
+echo oLink.TargetPath = "wsl.exe"
+echo oLink.Arguments = "-d Ubuntu -- bash -i -c ""cd ~/Hivemind-AgentSwarm && ./scripts/start.sh"""
+echo oLink.Description = "Launch Hivemind Agent Swarm"
+echo oLink.WorkingDirectory = "%USERPROFILE%"
+echo oLink.Save
+) > "%TEMP%\CreateShortcut.vbs"
 
 cscript //nologo "%TEMP%\CreateShortcut.vbs"
-del "%TEMP%\CreateShortcut.vbs"
+del "%TEMP%\CreateShortcut.vbs" 2>nul
 
+:: Also create a start script in WSL that's more reliable
+wsl -d Ubuntu -e bash -c "mkdir -p ~/Hivemind-AgentSwarm/scripts && cat > ~/Hivemind-AgentSwarm/scripts/start.sh << 'STARTSCRIPT'
+#!/bin/bash
+cd ~/Hivemind-AgentSwarm
+
+# Kill existing sessions
+tmux kill-session -t hivemind-api 2>/dev/null
+
+# Start API
+tmux new-session -d -s hivemind-api -c ~/Hivemind-AgentSwarm/packages/api 'node dist/index.js'
+
+# Wait for API
+echo 'Starting Hivemind...'
+for i in {1..10}; do
+    curl -s http://localhost:3001/health >/dev/null && break
+    sleep 1
+done
+
+echo ''
+echo '========================================'
+echo '  🐝 Hivemind is running!'
+echo '========================================'
+echo ''
+echo '  Dashboard: http://localhost:5173'
+echo '  API:       http://localhost:3001'
+echo ''
+echo '  Press Ctrl+C to stop'
+echo ''
+
+cd apps/dashboard
+npx vite --host 0.0.0.0
+STARTSCRIPT
+chmod +x ~/Hivemind-AgentSwarm/scripts/start.sh"
+
+echo  Desktop shortcut created! ✓
+
+:: -----------------------------------------------------------------------------
+:: Done!
+:: -----------------------------------------------------------------------------
 echo.
-echo ========================================
-echo   Installation Complete!
-echo ========================================
+echo  ╔════════════════════════════════════════╗
+echo  ║                                        ║
+echo  ║   🎉 INSTALLATION COMPLETE! 🎉        ║
+echo  ║                                        ║
+echo  ╠════════════════════════════════════════╣
+echo  ║                                        ║
+echo  ║   To start Hivemind:                  ║
+echo  ║   • Double-click "Hivemind" on your   ║
+echo  ║     desktop                           ║
+echo  ║                                        ║
+echo  ║   The dashboard will open at:         ║
+echo  ║   http://localhost:5173               ║
+echo  ║                                        ║
+echo  ║   IMPORTANT: Edit your API key in:    ║
+echo  ║   Ubuntu → ~/Hivemind-AgentSwarm/     ║
+echo  ║            settings.json              ║
+echo  ║                                        ║
+echo  ╚════════════════════════════════════════╝
 echo.
-echo A "Hivemind" shortcut has been added to
-echo your desktop.
+
+:: Ask if they want to start now
+set /p STARTNOW="Start Hivemind now? (Y/n): "
+if /i "%STARTNOW%"=="n" goto :done
+if /i "%STARTNOW%"=="no" goto :done
+
+:: Start it
 echo.
-echo To start Hivemind:
-echo   1. Double-click the desktop shortcut
-echo   OR
-echo   2. Open Ubuntu and run: hivemind
+echo  Starting Hivemind...
+wsl -d Ubuntu -- bash -i -c "cd ~/Hivemind-AgentSwarm && ./scripts/start.sh"
+
+:done
 echo.
-echo The dashboard will open at:
-echo   http://localhost:5173
-echo.
-pause
+echo  Press any key to close this window...
+pause >nul
 exit /b 0
-
