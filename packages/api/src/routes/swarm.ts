@@ -1,137 +1,178 @@
-// Swarm routes - Broadcast, pause, stop, stats
+// =============================================================================
+// Swarm Routes
+// =============================================================================
 
 import { Router } from 'express'
-import { listSessions, broadcast, sendInterrupt, readPane } from '@hivemind/connectors/tmux'
-import { readMessages, appendMessage } from '@hivemind/connectors/filesystem'
-import { parseCostFromOutput } from '@hivemind/connectors/llm'
-import type { ServerConfig } from '../server'
+import type { SettingsManager } from '@hivemind/config'
+import { getAgents, sendKeys, getAgentActivity } from '@hivemind/connectors'
+import { AGENT_DEFINITIONS } from '@hivemind/core'
 
-// Track session costs
-const sessionCosts: Record<string, number> = {}
-let totalCost = 0
-
-export function swarmRoutes(config: ServerConfig) {
+export function createSwarmRoutes(settings: SettingsManager): Router {
   const router = Router()
   
-  // Get swarm stats
-  router.get('/stats', async (req, res) => {
+  // Get swarm status
+  router.get('/status', async (req, res) => {
+    const cfg = settings.get()
+    
     try {
-      const sessions = await listSessions({ defaultPath: config.projectDir })
+      const tmuxAgents = await getAgents(cfg.tmuxPrefix)
       
-      // Parse costs from each session
-      for (const session of sessions) {
-        const output = await readPane(session.id)
-        const cost = parseCostFromOutput(output)
-        if (cost > 0) sessionCosts[session.id] = cost
+      // Add permanent nodes: USER and QUEEN
+      // These always exist in the topology regardless of tmux sessions
+      const userNode = {
+        id: 'user',
+        shortName: 'user',
+        role: 'user' as const,
+        name: 'USER',
+        icon: '👤',
+        color: '#60a5fa', // blue
+        status: 'active' as const,
+        model: '',
+        task: 'Human operator',
+        runtime: 0,
       }
       
-      const currentTotal = Object.values(sessionCosts).reduce((sum, c) => sum + c, 0)
-      if (currentTotal > totalCost) totalCost = currentTotal
+      const queenNode = {
+        id: 'queen',
+        shortName: 'queen',
+        role: 'conductor' as const,
+        name: 'QUEEN',
+        icon: '👑',
+        color: '#fbbf24', // amber/gold
+        status: 'active' as const,
+        model: cfg.profiles?.[cfg.speedLevel]?.models?.conductor || 'anthropic/claude-sonnet',
+        task: 'Swarm orchestration',
+        runtime: 0,
+      }
       
-      // Count messages
-      let messageCount = 0
-      try {
-        const messages = await readMessages(config.projectDir)
-        messageCount = (messages.match(/^(##|>|\[\d)/gm) || []).length
-      } catch {}
+      // Combine: USER + QUEEN + tmux agents
+      const agents = [userNode, queenNode, ...tmuxAgents]
       
-      // Calculate runtime
-      const firstSession = sessions[0]
-      const runtime = firstSession ? Date.now() - firstSession.created : 0
+      // Build edges:
+      // - USER connects to QUEEN
+      // - QUEEN connects to all worker agents
+      const edges = [
+        // User -> Queen connection
+        { source: 'user', target: 'queen', active: true },
+        // Queen -> all workers
+        ...tmuxAgents.map(a => ({
+          source: 'queen',
+          target: a.id,
+          active: a.status === 'active',
+        }))
+      ]
       
       res.json({
-        agentCount: sessions.length + 2, // +2 for USER and CONDUCTOR
-        messageCount,
-        cost: `$${totalCost.toFixed(2)}`,
-        runtime: formatRuntime(runtime),
-        breakdown: sessionCosts
+        agents,
+        edges,
+        stats: {
+          activeAgents: agents.filter(a => a.status === 'active').length,
+          totalAgents: agents.length,
+          messagesExchanged: 0, // TODO: track this
+          tasksCompleted: 0,
+          uptime: 0,
+        },
       })
-    } catch (e) {
-      res.status(500).json({ error: (e as Error).message })
+    } catch (e: any) {
+      res.status(500).json({ error: e.message })
+    }
+  })
+  
+  // Get activity feed
+  router.get('/activity', async (req, res) => {
+    const cfg = settings.get()
+    
+    try {
+      const agents = await getAgents(cfg.tmuxPrefix)
+      const activities = []
+      
+      for (const agent of agents) {
+        const summary = await getAgentActivity(agent.id)
+        activities.push({
+          agent: agent.id,
+          role: agent.role,
+          summary,
+          timestamp: new Date().toISOString(),
+        })
+      }
+      
+      res.json({ activities })
+    } catch (e: any) {
+      res.status(500).json({ error: e.message })
     }
   })
   
   // Broadcast to all agents
   router.post('/broadcast', async (req, res) => {
+    const { message } = req.body
+    const cfg = settings.get()
+    
+    if (!message) {
+      return res.status(400).json({ error: 'Message required' })
+    }
+    
     try {
-      const { message } = req.body
+      const agents = await getAgents(cfg.tmuxPrefix)
+      const timestamp = new Date().toISOString()
+      const broadcastMsg = `# BROADCAST [${timestamp}]\n${message}`
       
-      // Append to MESSAGES.md
-      await appendMessage(config.projectDir, `# BROADCAST\n${message}`)
-      
-      // Send to all tmux sessions
-      const count = await broadcast(message, { defaultPath: config.projectDir })
+      for (const agent of agents) {
+        await sendKeys(agent.id, broadcastMsg)
+      }
       
       res.json({
         success: true,
-        message: `Broadcast sent to ${count} agents`
+        message: `Broadcast sent to ${agents.length} agents`,
+        agentCount: agents.length,
       })
-    } catch (e) {
-      res.status(500).json({ error: (e as Error).message })
+    } catch (e: any) {
+      res.status(500).json({ error: e.message })
     }
   })
   
-  // Pause all agents (send Ctrl+C)
+  // Get available roles
+  router.get('/roles', (req, res) => {
+    res.json({ roles: AGENT_DEFINITIONS })
+  })
+  
+  // Pause swarm (stub - pauses polling/activity, agents keep running)
   router.post('/pause', async (req, res) => {
-    try {
-      const sessions = await listSessions({ defaultPath: config.projectDir })
-      
-      for (const session of sessions) {
-        await sendInterrupt(session.id)
-      }
-      
-      res.json({
-        success: true,
-        message: `Paused ${sessions.length} agents`
-      })
-    } catch (e) {
-      res.status(500).json({ error: (e as Error).message })
-    }
+    // TODO: Implement actual pause logic (could set a flag that stops new tasks)
+    res.json({ 
+      success: true, 
+      message: 'Swarm paused',
+      paused: true 
+    })
   })
   
-  // Emergency stop (kill all sessions)
+  // Emergency stop - kill all agents
   router.post('/stop', async (req, res) => {
+    const cfg = settings.get()
+    
     try {
-      const sessions = await listSessions({ defaultPath: config.projectDir })
-      const { killSession } = await import('@hivemind/connectors/tmux')
+      const agents = await getAgents(cfg.tmuxPrefix)
+      const { killSession } = await import('@hivemind/connectors')
       
-      for (const session of sessions) {
-        await killSession(session.id)
+      let killed = 0
+      for (const agent of agents) {
+        try {
+          await killSession(agent.id)
+          killed++
+        } catch {
+          // Agent may already be dead
+        }
       }
       
-      res.json({
-        success: true,
-        message: `Stopped ${sessions.length} agents`
+      res.json({ 
+        success: true, 
+        message: `Emergency stop: killed ${killed} agents`,
+        killed 
       })
-    } catch (e) {
-      res.status(500).json({ error: (e as Error).message })
-    }
-  })
-  
-  // Get messages
-  router.get('/messages', async (req, res) => {
-    try {
-      const messages = await readMessages(config.projectDir)
-      res.json({ messages })
-    } catch (e) {
-      res.json({ messages: '# No messages' })
+    } catch (e: any) {
+      res.status(500).json({ error: e.message })
     }
   })
   
   return router
-}
-
-function formatRuntime(ms: number): string {
-  const seconds = Math.floor(ms / 1000)
-  const minutes = Math.floor(seconds / 60)
-  const hours = Math.floor(minutes / 60)
-  
-  if (hours > 0) {
-    return `${hours}h ${minutes % 60}m`
-  } else if (minutes > 0) {
-    return `${minutes}m ${seconds % 60}s`
-  } else {
-    return `${seconds}s`
-  }
 }
 

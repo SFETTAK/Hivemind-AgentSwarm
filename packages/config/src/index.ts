@@ -1,10 +1,10 @@
 // =============================================================================
-// @hivemind/connectors - Public API
+// @hivemind/config - Public API
 // =============================================================================
 
-// Tmux connector
-export * from './tmux'
-
-// LLM connectors
-export * from './llm'
+export {
+  DEFAULT_CONFIG,
+  SettingsManager,
+  createSettingsManager,
+} from './settings'
 

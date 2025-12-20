@@ -1,21 +1,13 @@
 {
-  "name": "hivemind",
-  "version": "0.1.0",
+  "name": "hivemind-backend",
+  "version": "1.0.0",
   "private": true,
-  "description": "AI Agent Swarm Orchestration System",
+  "workspaces": [
+    "packages/*"
+  ],
   "scripts": {
-    "dev": "pnpm --filter @hivemind/dashboard dev",
     "build": "pnpm -r build",
-    "test": "pnpm -r test",
-    "lint": "pnpm -r lint",
-    "clean": "pnpm -r clean"
-  },
-  "keywords": ["ai", "agents", "swarm", "orchestration", "cursor", "mcp"],
-  "author": "SFETTAK",
-  "license": "MIT",
-  "packageManager": "pnpm@9.0.0",
-  "engines": {
-    "node": ">=18.0.0"
+    "dev": "pnpm --filter @hivemind/api dev",
+    "test": "pnpm -r test"
   }
 }
-

@@ -552,8 +552,8 @@ function FilePanelComponent({ apiBase }: FilePanelProps) {
     return (localStorage.getItem('hivemind-filepanel-tab') as TabId) || 'files'
   })
   const [projectDir, setProjectDir] = useState(() => {
-    if (typeof window === 'undefined') return ''
-    return localStorage.getItem('hivemind-project-dir') || ''
+    if (typeof window === 'undefined') return '/home/blastly/hivemind-refactor'
+    return localStorage.getItem('hivemind-project-dir') || '/home/blastly/hivemind-refactor'
   })
   
   const handleTabChange = (tab: TabId) => {

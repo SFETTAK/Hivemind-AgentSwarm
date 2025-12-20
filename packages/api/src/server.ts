@@ -1,49 +1,161 @@
-// Express server setup
+// =============================================================================
+// @hivemind/api - Express Server
+// =============================================================================
 
 import express from 'express'
 import cors from 'cors'
-import { agentRoutes } from './routes/agents'
-import { swarmRoutes } from './routes/swarm'
-import { filesRoutes } from './routes/files'
-import { conductorRoutes } from './routes/conductor'
-import { settingsRoutes } from './routes/settings'
+import * as path from 'path'
+import { createSettingsManager, type SettingsManager } from '@hivemind/config'
+import { createAgentRoutes } from './routes/agents'
+import { createConductorRoutes } from './routes/conductor'
+import { createSettingsRoutes } from './routes/settings'
+import { createSwarmRoutes } from './routes/swarm'
+import { createFilesRoutes } from './routes/files'
 
 export interface ServerConfig {
   port: number
-  projectDir: string
-  promptsDir: string
+  settingsPath: string
+  projectDir?: string
+  promptsDir?: string
 }
 
-export function createServer(config: ServerConfig) {
+export async function createServer(config: ServerConfig): Promise<{ app: express.Application; settings: SettingsManager }> {
   const app = express()
+  
+  // Initialize settings
+  const settings = createSettingsManager(config.settingsPath)
+  await settings.load()
+  
+  // Override paths if provided
+  if (config.projectDir) {
+    await settings.update({ projectDir: config.projectDir })
+  }
+  if (config.promptsDir) {
+    await settings.update({ promptsDir: config.promptsDir })
+  }
   
   // Middleware
   app.use(cors())
-  app.use(express.json())
+  app.use(express.json({ limit: '10mb' }))
   
   // Health checks
   app.get('/health', (req, res) => res.json({ status: 'ok' }))
   app.get('/ready', (req, res) => res.json({ ready: true }))
   
   // API routes
-  app.use('/api/agents', agentRoutes(config))
-  app.use('/api/swarm', swarmRoutes(config))
-  app.use('/api/files', filesRoutes(config))
-  app.use('/api/conductor', conductorRoutes(config))
-  app.use('/api/settings', settingsRoutes(config))
+  app.use('/api/agents', createAgentRoutes(settings))
+  app.use('/api/conductor', createConductorRoutes(settings))
+  app.use('/api/settings', createSettingsRoutes(settings))
+  app.use('/api/swarm', createSwarmRoutes(settings))
+  app.use('/api/files', createFilesRoutes(settings))
   
-  return app
+  // Legacy compatibility endpoints for UI
+  const { getAgents } = require('@hivemind/connectors')
+  const cfg = settings.get()
+  
+  // GET /api/edges - UI expects separate edges endpoint
+  app.get('/api/edges', async (req, res) => {
+    try {
+      const agents = await getAgents(cfg.tmuxPrefix)
+      // Build proper edge structure: USER -> QUEEN -> workers
+      const edges = [
+        // User to Queen
+        { source: 'user', target: 'queen', active: true },
+        // Queen to all workers
+        ...agents.map((a: any) => ({
+          source: 'queen',
+          target: a.id,
+          active: a.status === 'active',
+        }))
+      ]
+      res.json({ edges })
+    } catch (e: any) {
+      res.json({ edges: [] })
+    }
+  })
+  
+  // GET /api/stats - UI expects stats endpoint
+  app.get('/api/stats', async (req, res) => {
+    try {
+      const agents = await getAgents(cfg.tmuxPrefix)
+      res.json({
+        agentCount: agents.length,
+        messageCount: 0,
+        cost: '$0.00',
+        runtime: '0s',
+      })
+    } catch (e: any) {
+      res.json({ agentCount: 0, messageCount: 0, cost: '$0.00', runtime: '0s' })
+    }
+  })
+  
+  // GET /api/messages - UI expects messages endpoint
+  app.get('/api/messages', async (req, res) => {
+    // Return empty messages for now - could read from a log file later
+    res.json({ messages: '' })
+  })
+  
+  // GET /api/costs - Cost tracking (stub)
+  app.get('/api/costs', (req, res) => {
+    // TODO: Implement actual cost tracking from LLM usage
+    res.json({
+      total: '$0.00',
+      breakdown: {
+        input_tokens: 0,
+        output_tokens: 0,
+        requests: 0,
+      },
+      byAgent: {},
+      byModel: {},
+    })
+  })
+  
+  // POST /api/costs/reset - Reset cost tracking
+  app.post('/api/costs/reset', (req, res) => {
+    // TODO: Implement actual cost reset
+    res.json({ success: true, message: 'Costs reset' })
+  })
+  
+  // Cursor IDE integration endpoints (stubs)
+  app.get('/api/cursor/messages', (req, res) => {
+    // For Cursor IDE integration - not MVP
+    res.json({ messages: [] })
+  })
+  
+  app.post('/api/cursor/message', (req, res) => {
+    // For Cursor IDE integration - not MVP
+    res.json({ success: true, message: 'Message received' })
+  })
+  
+  // Legacy compatibility routes
+  app.get('/api/activity', async (req, res) => {
+    // Redirect to swarm activity
+    const swarmRouter = createSwarmRoutes(settings)
+    req.url = '/activity'
+    swarmRouter(req, res, () => {})
+  })
+  
+  app.post('/api/broadcast', async (req, res) => {
+    // Redirect to swarm broadcast
+    const swarmRouter = createSwarmRoutes(settings)
+    req.url = '/broadcast'
+    swarmRouter(req, res, () => {})
+  })
+  
+  return { app, settings }
 }
 
-export function startServer(config: ServerConfig) {
-  const app = createServer(config)
+export async function startServer(config: ServerConfig): Promise<{ app: express.Application; settings: SettingsManager }> {
+  const { app, settings } = await createServer(config)
+  const cfg = settings.get()
   
   app.listen(config.port, '0.0.0.0', () => {
     console.log(`🐝 Hivemind API running on http://0.0.0.0:${config.port}`)
-    console.log(`📁 Project dir: ${config.projectDir}`)
-    console.log(`📁 Prompts dir: ${config.promptsDir}`)
+    console.log(`📁 Project dir: ${cfg.projectDir}`)
+    console.log(`📁 Prompts dir: ${cfg.promptsDir}`)
+    console.log(`📋 Settings: ${config.settingsPath}`)
   })
   
-  return app
+  return { app, settings }
 }
 

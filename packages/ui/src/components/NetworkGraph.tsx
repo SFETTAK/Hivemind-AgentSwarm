@@ -61,12 +61,28 @@ function NetworkGraphComponent({ onAgentDoubleClick, onSelectAgent, selectedAgen
     if (nodePositions[agent.id]) {
       return nodePositions[agent.id]
     }
-    // Default positions based on agent type
+    // Default positions based on agent type - stable, not random
     const defaultPositions: Record<string, Position> = {
       'conductor': { x: 0.5, y: 0.3 },
+      'queen': { x: 0.5, y: 0.3 },
       'user': { x: 0.5, y: 0.7 },
+      'forge': { x: 0.25, y: 0.5 },
+      'sentinel': { x: 0.75, y: 0.5 },
+      'oracle': { x: 0.3, y: 0.7 },
+      'nexus': { x: 0.7, y: 0.7 },
+      'scribe': { x: 0.5, y: 0.85 },
     }
-    return defaultPositions[agent.id] || { x: 0.3 + Math.random() * 0.4, y: 0.3 + Math.random() * 0.4 }
+    // Use agent shortName or id to find position, fallback to deterministic position based on index
+    const key = agent.shortName?.toLowerCase() || agent.id.toLowerCase()
+    if (defaultPositions[key]) {
+      return defaultPositions[key]
+    }
+    // Deterministic fallback based on string hash
+    const hash = key.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0)
+    return { 
+      x: 0.2 + (hash % 60) / 100, 
+      y: 0.2 + ((hash * 7) % 60) / 100 
+    }
   }, [nodePositions])
   
   // Spawn particle function

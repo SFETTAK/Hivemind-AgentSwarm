@@ -128,19 +128,50 @@ function FloatingAgentChatComponent({ agent, onClose, initialPosition, apiBase }
     setLoading(true)
     
     try {
-      const res = await fetch(`${apiBase}/api/agents/${agent.shortName}/send`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ message: input })
-      })
-      const data = await res.json()
+      // Check if this is the Conductor/QUEEN - use chat API instead of tmux send
+      const isConductor = agent.role === 'conductor' || 
+                          agent.shortName?.includes('conductor') ||
+                          agent.name?.toUpperCase().includes('QUEEN') ||
+                          agent.name?.toUpperCase().includes('CONDUCTOR')
       
-      if (data.success) {
-        setMessages(prev => [...prev, {
-          id: Date.now() + 1,
-          role: 'system',
-          content: `Message sent to ${agent.name}`
-        }])
+      if (isConductor) {
+        // Use the Conductor chat API which actually calls the LLM
+        const res = await fetch(`${apiBase}/api/conductor/chat`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ message: input })
+        })
+        const data = await res.json()
+        
+        if (data.message || data.response) {
+          setMessages(prev => [...prev, {
+            id: Date.now() + 1,
+            role: 'assistant',
+            content: data.message || data.response
+          }])
+        } else if (data.error) {
+          setMessages(prev => [...prev, {
+            id: Date.now() + 1,
+            role: 'error',
+            content: data.error
+          }])
+        }
+      } else {
+        // Regular agent - send to tmux session
+        const res = await fetch(`${apiBase}/api/agents/${agent.shortName}/send`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ command: input })
+        })
+        const data = await res.json()
+        
+        if (data.success) {
+          setMessages(prev => [...prev, {
+            id: Date.now() + 1,
+            role: 'system',
+            content: `Command sent to ${agent.name}`
+          }])
+        }
       }
     } catch (err) {
       setMessages(prev => [...prev, {

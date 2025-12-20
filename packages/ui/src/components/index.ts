@@ -10,6 +10,5 @@ export { Controls, type ControlsProps } from './Controls'
 export { NetworkGraph, type NetworkGraphProps } from './NetworkGraph'
 export { FilePanel, type FilePanelProps } from './FilePanel'
 export { FloatingAgentChat, type FloatingAgentChatProps } from './FloatingAgentChat'
-
-// Settings component not yet migrated (large, complex)
+export { Settings, type SettingsProps } from './Settings'
 

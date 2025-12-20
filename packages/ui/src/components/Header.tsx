@@ -12,21 +12,21 @@ export const PROFILES = {
 
 export const MODEL_CONFIGS = {
   cruise: {
-    MODEL_FORGE: 'openrouter/deepseek/deepseek-chat-v3.1',
-    MODEL_SENTINEL: 'openrouter/deepseek/deepseek-chat-v3.1',
-    MODEL_ORACLE: 'openrouter/deepseek/deepseek-chat-v3.1',
-    MODEL_NEXUS: 'openrouter/deepseek/deepseek-chat-v3.1',
-    MODEL_SCRIBE: 'openrouter/deepseek/deepseek-chat-v3.1',
+    MODEL_FORGE: 'openrouter/anthropic/claude-3-5-haiku',
+    MODEL_SENTINEL: 'openrouter/anthropic/claude-3-5-haiku',
+    MODEL_ORACLE: 'openrouter/openai/gpt-4o-mini',
+    MODEL_NEXUS: 'openrouter/openai/gpt-4o-mini',
+    MODEL_SCRIBE: 'openrouter/google/gemini-2.0-flash-001',
   },
   fast: {
     MODEL_FORGE: 'openrouter/anthropic/claude-sonnet-4',
     MODEL_SENTINEL: 'openrouter/anthropic/claude-sonnet-4',
-    MODEL_ORACLE: 'openrouter/deepseek/deepseek-chat-v3.1',
-    MODEL_NEXUS: 'openrouter/deepseek/deepseek-chat-v3.1',
-    MODEL_SCRIBE: 'openrouter/deepseek/deepseek-chat-v3.1',
+    MODEL_ORACLE: 'openrouter/anthropic/claude-3-5-haiku',
+    MODEL_NEXUS: 'openrouter/anthropic/claude-3-5-haiku',
+    MODEL_SCRIBE: 'openrouter/anthropic/claude-3-5-haiku',
   },
   turbo: {
-    MODEL_FORGE: 'openrouter/anthropic/claude-opus-4',
+    MODEL_FORGE: 'openrouter/anthropic/claude-opus-4.5',
     MODEL_SENTINEL: 'openrouter/anthropic/claude-sonnet-4',
     MODEL_ORACLE: 'openrouter/anthropic/claude-sonnet-4',
     MODEL_NEXUS: 'openrouter/anthropic/claude-sonnet-4',
