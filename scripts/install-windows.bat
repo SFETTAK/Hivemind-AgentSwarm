@@ -200,28 +200,67 @@ if %errorLevel% neq 0 (
 echo.
 echo  [Step 3/4] Installing Hivemind...
 echo.
-echo  This will take a few minutes. Please wait...
+echo  ****************************************
+echo  *   THIS WILL TAKE 5-10 MINUTES       *
+echo  *   DO NOT CLOSE THIS WINDOW!         *
+echo  ****************************************
+echo.
+echo  You will see a lot of text scrolling by.
+echo  This is normal. Wait until it says "DONE".
 echo.
 
 :: First update apt (required on fresh Ubuntu)
+echo  Updating package lists...
 wsl -d Ubuntu -e bash -c "sudo apt-get update -qq" 2>nul
 
 :: Run the installer with --no-prompt flag
+echo.
+echo  Installing dependencies and Hivemind...
+echo.
 wsl -d Ubuntu -e bash -c "curl -fsSL https://raw.githubusercontent.com/SFETTAK/Hivemind-AgentSwarm/main/scripts/install.sh | bash -s -- --no-prompt"
 
-if %errorLevel% neq 0 (
+:: Verify the installation actually worked
+echo.
+echo  Verifying installation...
+wsl -d Ubuntu -e bash -c "test -d ~/Hivemind-AgentSwarm && echo EXISTS" > "%TEMP%\hivemind_check.txt" 2>nul
+set /p INSTALL_CHECK=<"%TEMP%\hivemind_check.txt"
+del "%TEMP%\hivemind_check.txt" 2>nul
+
+if not "%INSTALL_CHECK%"=="EXISTS" (
+    echo.
+    echo  ****************************************
+    echo  *                                      *
+    echo  *   INSTALLATION FAILED!              *
+    echo  *                                      *
+    echo  ****************************************
+    echo.
+    echo  The Hivemind folder was not created.
     echo.
     echo  ========================================
-    echo    Installation may have had issues    
+    echo  =   TO FIX THIS:                      =
     echo  ========================================
     echo.
-    echo   Check the output above for errors.  
+    echo   1. Open Ubuntu from the Start Menu
+    echo      (orange circle icon)
     echo.
-    echo   You can try running manually:
-    echo   1. Open Ubuntu from Start Menu
-    echo   2. Run: hivemind
+    echo   2. Copy and paste this command:
+    echo.
+    echo      curl -fsSL https://raw.githubusercontent.com/SFETTAK/Hivemind-AgentSwarm/main/scripts/install.sh ^| bash
+    echo.
+    echo   3. Wait for it to finish
+    echo.
+    echo   4. Then type: hivemind
+    echo.
+    echo  ========================================
     echo.
     pause
+    exit /b 1
+) else (
+    echo.
+    echo  ****************************************
+    echo  *   HIVEMIND INSTALLED SUCCESSFULLY!  *
+    echo  ****************************************
+    echo.
 )
 
 :: -----------------------------------------------------------------------------
