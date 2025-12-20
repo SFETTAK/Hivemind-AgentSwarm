@@ -11,6 +11,8 @@ import { createConductorRoutes } from './routes/conductor'
 import { createSettingsRoutes } from './routes/settings'
 import { createSwarmRoutes } from './routes/swarm'
 import { createFilesRoutes } from './routes/files'
+import debugRoutes from './routes/debug'
+import { logger } from './utils/logger'
 
 export interface ServerConfig {
   port: number
@@ -54,6 +56,9 @@ export async function createServer(config: ServerConfig): Promise<{ app: express
   app.use('/api/settings', createSettingsRoutes(settings))
   app.use('/api/swarm', createSwarmRoutes(settings))
   app.use('/api/files', createFilesRoutes(settings))
+  app.use('/api/debug', debugRoutes)
+  
+  logger.api.info('API routes initialized')
   
   // Legacy compatibility endpoints for UI
   const { getAgents } = require('@hivemind/connectors')
@@ -156,10 +161,16 @@ export async function startServer(config: ServerConfig): Promise<{ app: express.
   const cfg = settings.get()
   
   app.listen(config.port, '0.0.0.0', () => {
+    logger.api.info(`Hivemind API running on http://0.0.0.0:${config.port}`)
+    logger.api.info(`Project dir: ${cfg.projectDir}`)
+    logger.api.info(`Prompts dir: ${cfg.promptsDir}`)
+    logger.api.info(`Settings: ${config.settingsPath}`)
+    logger.api.info('Debug endpoints available at /api/debug/*')
     console.log(`🐝 Hivemind API running on http://0.0.0.0:${config.port}`)
     console.log(`📁 Project dir: ${cfg.projectDir}`)
     console.log(`📁 Prompts dir: ${cfg.promptsDir}`)
     console.log(`📋 Settings: ${config.settingsPath}`)
+    console.log(`🔍 Debug: /api/debug/logs, /api/debug/env, /api/debug/tmux`)
   })
   
   return { app, settings }

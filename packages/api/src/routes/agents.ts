@@ -14,6 +14,7 @@ import {
 } from '@hivemind/connectors'
 import type { AgentRole } from '@hivemind/core'
 import { isValidRole, getAgentDefinition } from '@hivemind/core'
+import { logger } from '../utils/logger'
 
 export function createAgentRoutes(settings: SettingsManager): Router {
   const router = Router()
@@ -63,13 +64,26 @@ export function createAgentRoutes(settings: SettingsManager): Router {
   router.post('/deploy', async (req, res) => {
     const { role = 'forge', task = 'general', model } = req.body
     
+    logger.agents.info(`Deploy request received`, { role, task, model })
+    
     if (!isValidRole(role)) {
+      logger.agents.warn(`Invalid role rejected: ${role}`)
       return res.status(400).json({ error: `Invalid role: ${role}` })
     }
     
     try {
       const cfg = settings.get()
       const selectedModel = model || settings.getModelForRole(role as any)
+      
+      logger.agents.info(`Starting agent deployment`, { 
+        role, 
+        task, 
+        selectedModel,
+        projectDir: cfg.projectDir,
+        promptsDir: cfg.promptsDir,
+        hasOpenRouterKey: !!cfg.openrouterApiKey,
+        hasAnthropicKey: !!cfg.anthropicApiKey,
+      })
       
       const { sessionName, agent } = await spawnAgent(role as AgentRole, task, {
         workingDir: cfg.projectDir,
@@ -83,6 +97,8 @@ export function createAgentRoutes(settings: SettingsManager): Router {
         autoAccept: cfg.autoAccept,
       })
       
+      logger.agents.info(`Agent deployed successfully`, { sessionName, role, selectedModel })
+      
       res.json({
         success: true,
         message: `Agent ${sessionName} deployed with aider (${selectedModel})`,
@@ -92,6 +108,7 @@ export function createAgentRoutes(settings: SettingsManager): Router {
         task,
       })
     } catch (e: any) {
+      logger.agents.error(`Agent deployment failed`, { role, task, error: e.message, stack: e.stack })
       res.status(500).json({ success: false, error: e.message })
     }
   })

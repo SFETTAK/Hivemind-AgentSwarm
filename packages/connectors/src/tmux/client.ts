@@ -10,6 +10,24 @@ import { getAgentDefinition, parseSessionName } from '@hivemind/core'
 
 const execAsync = promisify(exec)
 
+// Simple logger for connectors (doesn't depend on @hivemind/api)
+const log = {
+  debug: (msg: string, data?: unknown) => {
+    if (process.env.DEBUG?.includes('hivemind')) {
+      console.log(`[tmux:debug] ${msg}`, data ? JSON.stringify(data) : '')
+    }
+  },
+  info: (msg: string, data?: unknown) => {
+    console.log(`[tmux:info] ${msg}`, data ? JSON.stringify(data) : '')
+  },
+  warn: (msg: string, data?: unknown) => {
+    console.warn(`[tmux:warn] ${msg}`, data ? JSON.stringify(data) : '')
+  },
+  error: (msg: string, data?: unknown) => {
+    console.error(`[tmux:error] ${msg}`, data ? JSON.stringify(data) : '')
+  },
+}
+
 // -----------------------------------------------------------------------------
 // Types
 // -----------------------------------------------------------------------------
@@ -174,33 +192,60 @@ export async function spawnAgent(
   const sanitizedTask = task.replace(/[^a-zA-Z0-9-]/g, '-').toLowerCase().slice(0, 20)
   const sessionName = `${prefix}-${role}-${sanitizedTask}`
   
+  log.info(`Spawning agent: ${role}`, { sessionName, task, model: config.model })
+  log.debug('Spawn config', { 
+    workingDir: config.workingDir, 
+    promptsDir: config.promptsDir,
+    hasOpenRouterKey: !!config.apiKeys.openrouter,
+    hasAnthropicKey: !!config.apiKeys.anthropic,
+  })
+  
   // Check if already exists
   if (await sessionExists(sessionName)) {
+    log.warn(`Session already exists: ${sessionName}`)
     throw new Error(`Session ${sessionName} already exists`)
   }
   
   // Create session with env vars
-  await createSession({
-    sessionName,
-    workingDir: config.workingDir,
-    env: {
-      OPENROUTER_API_KEY: config.apiKeys.openrouter || '',
-      ANTHROPIC_API_KEY: config.apiKeys.anthropic || '',
-    },
-  })
+  log.debug(`Creating tmux session: ${sessionName}`)
+  try {
+    await createSession({
+      sessionName,
+      workingDir: config.workingDir,
+      env: {
+        OPENROUTER_API_KEY: config.apiKeys.openrouter || '',
+        ANTHROPIC_API_KEY: config.apiKeys.anthropic || '',
+      },
+    })
+    log.debug(`Session created: ${sessionName}`)
+  } catch (err) {
+    log.error(`Failed to create session: ${sessionName}`, err)
+    throw err
+  }
   
   // Small delay
   await new Promise(resolve => setTimeout(resolve, 500))
   
   // Start aider
   const promptPath = `${config.promptsDir}/${role.toUpperCase()}_PROMPT.md`
-  await startAider({
-    sessionName,
-    workingDir: config.workingDir,
-    model: config.model,
-    promptPath,
-    autoAccept: config.autoAccept ?? true,
-  })
+  log.debug(`Starting aider in ${sessionName}`, { model: config.model, promptPath })
+  
+  try {
+    await startAider({
+      sessionName,
+      workingDir: config.workingDir,
+      model: config.model,
+      promptPath,
+      autoAccept: config.autoAccept ?? true,
+    })
+    log.info(`Agent spawned successfully: ${role}`, { sessionName })
+  } catch (err) {
+    log.error(`Failed to start aider in ${sessionName}`, err)
+    // Session was created but aider failed - try to capture what happened
+    const output = await captureOutput(sessionName, 50)
+    log.error(`Session output after aider failure:`, output)
+    throw err
+  }
   
   // Build agent object
   const def = getAgentDefinition(role)
