@@ -229,6 +229,17 @@ echo   IMPORTANT: Add your API key!
 echo   Open Ubuntu and edit:               
 echo   ~/Hivemind-AgentSwarm/settings.json 
 echo.
+echo  ----------------------------------------
+echo.
+echo   GitHub: github.com/SFETTAK/Hivemind-AgentSwarm
+echo.
+echo   Thank you for trying Hivemind!
+echo   Built with love by the Hivemind community.
+echo.
+echo   (c) 2024-2025 Steven Fett ^& Contributors
+echo   MIT License
+echo.
+echo  ----------------------------------------
 
 :: Ask if they want to start now
 echo.
