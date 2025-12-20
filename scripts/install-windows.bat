@@ -164,9 +164,12 @@ cscript //nologo "%TEMP%\sc.vbs"
 del "%TEMP%\sc.vbs"
 echo  [+] Hivemind
 
-:: Repair tool
+:: Repair tool (stops Hivemind first, then repairs)
 echo @echo off > "%USERPROFILE%\Desktop\Hivemind-Repair.bat"
 echo title Hivemind Repair >> "%USERPROFILE%\Desktop\Hivemind-Repair.bat"
+echo echo. >> "%USERPROFILE%\Desktop\Hivemind-Repair.bat"
+echo echo Stopping Hivemind if running... >> "%USERPROFILE%\Desktop\Hivemind-Repair.bat"
+echo wsl -d Ubuntu -e bash -c "hivemind-stop 2^>/dev/null; pkill -f 'node.*hivemind' 2^>/dev/null; tmux kill-server 2^>/dev/null; echo Stopped." >> "%USERPROFILE%\Desktop\Hivemind-Repair.bat"
 echo echo. >> "%USERPROFILE%\Desktop\Hivemind-Repair.bat"
 echo echo Repairing Hivemind... This takes 5-10 minutes. >> "%USERPROFILE%\Desktop\Hivemind-Repair.bat"
 echo echo. >> "%USERPROFILE%\Desktop\Hivemind-Repair.bat"
