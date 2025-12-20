@@ -75,17 +75,37 @@ if %errorLevel% neq 0 (
     )
     
     echo.
+    echo  ****************************************
+    echo  *                                      *
+    echo  *    WSL INSTALLED SUCCESSFULLY!       *
+    echo  *                                      *
+    echo  *    >>> RESTART REQUIRED <<<          *
+    echo  *                                      *
+    echo  ****************************************
+    echo.
     echo  ========================================
-    echo    WSL Installed - RESTART REQUIRED     
+    echo  =                                      =
+    echo  =   !!! IMPORTANT - READ THIS !!!     =
+    echo  =                                      =
+    echo  =   Your computer MUST restart now.   =
+    echo  =                                      =
+    echo  =   After your computer restarts:     =
+    echo  =                                      =
+    echo  =   1. Find this installer file       =
+    echo  =   2. Right-click it                 =
+    echo  =   3. "Run as administrator" AGAIN   =
+    echo  =                                      =
+    echo  =   The installer will continue       =
+    echo  =   from where it left off.           =
+    echo  =                                      =
     echo  ========================================
     echo.
-    echo   Your computer will restart in 60    
-    echo   seconds.                            
+    echo  ****************************************
+    echo  *   RUN THIS INSTALLER AGAIN AFTER    *
+    echo  *   YOUR COMPUTER RESTARTS!           *
+    echo  ****************************************
     echo.
-    echo   After restart, RUN THIS INSTALLER   
-    echo   AGAIN to continue.                  
-    echo.
-    echo  Press any key to restart now...
+    echo  Press any key to restart your computer now...
     pause >nul
     shutdown /r /t 0
     exit /b 0
@@ -114,23 +134,44 @@ if %errorLevel% neq 0 (
     )
     
     echo.
+    echo  ****************************************
+    echo  *                                      *
+    echo  *   UBUNTU SETUP - ACTION REQUIRED    *
+    echo  *                                      *
+    echo  ****************************************
+    echo.
+    echo  A BLACK TERMINAL WINDOW will open.
+    echo.
     echo  ========================================
-    echo    IMPORTANT: Ubuntu Setup Required     
+    echo  =   FOLLOW THESE STEPS CAREFULLY:     =
     echo  ========================================
     echo.
-    echo   A terminal window will open.         
+    echo   STEP 1: Wait for "Installing..." to finish
+    echo           (this takes 1-2 minutes)
     echo.
-    echo   You MUST:                           
-    echo   1. Wait for it to finish installing
-    echo   2. Enter a username (lowercase)     
-    echo   3. Enter a password (you pick it)
-    echo   4. Confirm password
-    echo   5. Type: exit                       
-    echo   6. Press Enter                      
+    echo   STEP 2: When it asks "Enter new UNIX username:"
+    echo           Type a username (lowercase, no spaces)
+    echo           Example: john
+    echo           Press Enter
     echo.
-    echo   DO NOT just close the window!       
+    echo   STEP 3: When it asks "New password:"
+    echo           Type a password (you won't see it)
+    echo           Press Enter
     echo.
-    echo  Press any key when ready...
+    echo   STEP 4: When it asks "Retype new password:"
+    echo           Type the same password again
+    echo           Press Enter
+    echo.
+    echo   STEP 5: When you see a $ prompt, type:
+    echo           exit
+    echo           Press Enter
+    echo.
+    echo  ****************************************
+    echo  *   DO NOT CLOSE THE WINDOW WITH X!   *
+    echo  *   You must type "exit" to finish.   *
+    echo  ****************************************
+    echo.
+    echo  Press any key when you're ready to begin...
     pause >nul
     
     :: Launch Ubuntu and wait for user to configure it
