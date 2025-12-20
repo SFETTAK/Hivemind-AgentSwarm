@@ -230,31 +230,20 @@ if not "%INSTALL_CHECK%"=="EXISTS" (
     echo.
     echo  ****************************************
     echo  *                                      *
-    echo  *   INSTALLATION FAILED!              *
+    echo  *   INSTALLATION INCOMPLETE           *
     echo  *                                      *
     echo  ****************************************
     echo.
-    echo  The Hivemind folder was not created.
+    echo  Don't worry! We'll create a repair tool
+    echo  on your desktop that you can use to fix this.
     echo.
-    echo  ========================================
-    echo  =   TO FIX THIS:                      =
-    echo  ========================================
+    echo  After this window closes:
+    echo  1. Double-click "Hivemind-Repair" on desktop
+    echo  2. Wait for it to finish
+    echo  3. Then double-click "Hivemind" to start
     echo.
-    echo   1. Open Ubuntu from the Start Menu
-    echo      (orange circle icon)
-    echo.
-    echo   2. Copy and paste this command:
-    echo.
-    echo      curl -fsSL https://raw.githubusercontent.com/SFETTAK/Hivemind-AgentSwarm/main/scripts/install.sh ^| bash
-    echo.
-    echo   3. Wait for it to finish
-    echo.
-    echo   4. Then type: hivemind
-    echo.
-    echo  ========================================
-    echo.
-    pause
-    exit /b 1
+    :: Still create the shortcuts so they can repair
+    goto :create_shortcuts
 ) else (
     echo.
     echo  ****************************************
@@ -264,14 +253,14 @@ if not "%INSTALL_CHECK%"=="EXISTS" (
 )
 
 :: -----------------------------------------------------------------------------
-:: Step 4: Create desktop shortcut
+:: Step 4: Create desktop shortcuts and help files
 :: -----------------------------------------------------------------------------
+:create_shortcuts
 echo.
-echo  [Step 4/4] Creating desktop shortcut...
+echo  [Step 4/4] Creating desktop shortcuts...
 
+:: Create main Hivemind shortcut
 set "SHORTCUT_PATH=%USERPROFILE%\Desktop\Hivemind.lnk"
-
-:: Create VBScript to make the shortcut
 (
 echo Set oWS = WScript.CreateObject^("WScript.Shell"^)
 echo sLinkFile = "%SHORTCUT_PATH%"
@@ -282,11 +271,98 @@ echo oLink.Description = "Launch Hivemind Agent Swarm"
 echo oLink.WorkingDirectory = "%USERPROFILE%"
 echo oLink.Save
 ) > "%TEMP%\CreateShortcut.vbs"
-
 cscript //nologo "%TEMP%\CreateShortcut.vbs" >nul 2>&1
 del "%TEMP%\CreateShortcut.vbs" 2>nul
+echo  [+] Hivemind shortcut created
 
-echo  Desktop shortcut created!
+:: Create Repair/Reinstall script on desktop
+set "REPAIR_PATH=%USERPROFILE%\Desktop\Hivemind-Repair.bat"
+(
+echo @echo off
+echo title Hivemind Repair
+echo echo.
+echo echo  ========================================
+echo echo    HIVEMIND REPAIR TOOL
+echo echo  ========================================
+echo echo.
+echo echo  This will reinstall Hivemind.
+echo echo  Please wait 5-10 minutes...
+echo echo.
+echo wsl -d Ubuntu -e bash -c "curl -fsSL https://raw.githubusercontent.com/SFETTAK/Hivemind-AgentSwarm/main/scripts/install.sh ^| bash"
+echo echo.
+echo echo  ========================================
+echo echo    REPAIR COMPLETE!
+echo echo  ========================================
+echo echo.
+echo echo  Now double-click "Hivemind" to start.
+echo echo.
+echo pause
+) > "%REPAIR_PATH%"
+echo  [+] Hivemind-Repair shortcut created
+
+:: Create README/Help file on desktop
+set "README_PATH=%USERPROFILE%\Desktop\Hivemind-README.txt"
+(
+echo ========================================
+echo   HIVEMIND AGENT SWARM - QUICK START
+echo ========================================
+echo.
+echo STARTING HIVEMIND:
+echo   Double-click "Hivemind" on your desktop.
+echo   Wait for it to say "Dashboard running..."
+echo   Then open: http://localhost:5173
+echo.
+echo IMPORTANT: Keep the black window open!
+echo Closing it will stop Hivemind.
+echo.
+echo ----------------------------------------
+echo.
+echo TROUBLESHOOTING:
+echo.
+echo Problem: "localhost refused to connect"
+echo Solution: The server isn't running yet.
+echo   1. Double-click "Hivemind" on desktop
+echo   2. Wait for "Dashboard running on port 5173"
+echo   3. THEN open http://localhost:5173
+echo.
+echo Problem: Nothing happens when I click Hivemind
+echo Solution: Run the repair tool.
+echo   1. Double-click "Hivemind-Repair" on desktop
+echo   2. Wait for it to finish
+echo   3. Then try "Hivemind" again
+echo.
+echo Problem: "Hivemind command not found"
+echo Solution: The install didn't complete.
+echo   1. Double-click "Hivemind-Repair" on desktop
+echo   2. Wait 5-10 minutes
+echo   3. Then try "Hivemind" again
+echo.
+echo ----------------------------------------
+echo.
+echo SETTING UP YOUR API KEY:
+echo.
+echo   1. Get a key from: https://openrouter.ai/keys
+echo   2. Open Ubuntu from Start Menu
+echo   3. Type: nano ~/Hivemind-AgentSwarm/settings.json
+echo   4. Add your key to "openrouterApiKey"
+echo   5. Press Ctrl+X, then Y, then Enter to save
+echo.
+echo ----------------------------------------
+echo.
+echo LINKS:
+echo   GitHub: https://github.com/SFETTAK/Hivemind-AgentSwarm
+echo   Docs:   https://github.com/SFETTAK/Hivemind-AgentSwarm/blob/main/docs/INSTALL.md
+echo.
+echo ----------------------------------------
+echo.
+echo ^(c^) 2024-2025 Steven Fett ^& Contributors
+echo MIT License
+echo.
+) > "%README_PATH%"
+echo  [+] Hivemind-README.txt created
+
+echo.
+echo  Desktop shortcuts created!
 
 :: -----------------------------------------------------------------------------
 :: Done!
@@ -294,53 +370,29 @@ echo  Desktop shortcut created!
 echo.
 echo  ========================================
 echo                                        
-echo    INSTALLATION COMPLETE!              
+echo    SETUP COMPLETE!                     
 echo                                        
 echo  ========================================
 echo.
-echo   To start Hivemind:                  
-echo   - Double-click "Hivemind" on desktop
-echo   - Or open Ubuntu and type: hivemind 
+echo   3 items added to your Desktop:
 echo.
-echo   Dashboard opens at:                 
-echo   http://localhost:5173               
-echo.
-echo   IMPORTANT: Add your API key!        
-echo   Open Ubuntu and edit:               
-echo   ~/Hivemind-AgentSwarm/settings.json 
+echo   [Hivemind]        - Start the dashboard
+echo   [Hivemind-Repair] - Fix if something breaks
+echo   [Hivemind-README] - Help and troubleshooting
 echo.
 echo  ----------------------------------------
 echo.
 echo   GitHub: github.com/SFETTAK/Hivemind-AgentSwarm
 echo.
 echo   Thank you for trying Hivemind!
-echo   Built with love by the Hivemind community.
-echo.
 echo   (c) 2024-2025 Steven Fett ^& Contributors
-echo   MIT License
 echo.
 echo  ----------------------------------------
+
+:: Open the README so they have instructions
 echo.
-echo  ========================================
-echo  =   TROUBLESHOOTING                    =
-echo  ========================================
-echo.
-echo   If http://localhost:5173 doesn't work:
-echo.
-echo   1. Open Ubuntu from Start Menu
-echo   2. Type these commands:
-echo.
-echo      cd ~/Hivemind-AgentSwarm
-echo      hivemind
-echo.
-echo   3. Wait for "Dashboard running on..."
-echo   4. Then open http://localhost:5173
-echo.
-echo   Still not working? Try:
-echo      cd ~/Hivemind-AgentSwarm
-echo      pnpm start
-echo.
-echo  ----------------------------------------
+echo  Opening README with instructions...
+start notepad "%USERPROFILE%\Desktop\Hivemind-README.txt"
 
 :: Ask if they want to start now
 echo.
@@ -356,6 +408,9 @@ echo  ****************************************
 echo  *   KEEP THIS WINDOW OPEN!            *
 echo  *   Closing it will stop Hivemind.    *
 echo  ****************************************
+echo.
+echo  When you see "Dashboard running on port 5173"
+echo  open http://localhost:5173 in your browser.
 echo.
 wsl -d Ubuntu -- bash -l -c hivemind
 
