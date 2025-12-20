@@ -87,15 +87,18 @@ export async function createSession(options: SpawnOptions): Promise<void> {
   // Create the session
   await execAsync(`tmux new-session -d -s "${sessionName}" -c "${workingDir}"`)
   
-  // Export environment variables if provided
+  // Set environment variables if provided
   if (env) {
     for (const [key, value] of Object.entries(env)) {
       if (value) {
+        // Set env var (will show in terminal briefly)
         await execAsync(`tmux send-keys -t "${sessionName}" 'export ${key}="${value}"' Enter`)
       }
     }
-    // Small delay to let exports complete
-    await new Promise(resolve => setTimeout(resolve, 300))
+    // Clear the terminal to hide the API keys from view
+    await new Promise(resolve => setTimeout(resolve, 200))
+    await execAsync(`tmux send-keys -t "${sessionName}" 'clear' Enter`)
+    await new Promise(resolve => setTimeout(resolve, 100))
   }
 }
 
