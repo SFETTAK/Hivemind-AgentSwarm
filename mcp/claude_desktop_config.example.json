@@ -2,10 +2,11 @@
   "mcpServers": {
     "hivemind": {
       "command": "node",
-      "args": ["./mcp/hivemind-mcp-server.js"],
+      "args": ["/home/YOUR_USERNAME/Hivemind-AgentSwarm/mcp/hivemind-mcp-server.js"],
       "env": {
         "HIVEMIND_API": "http://localhost:3001"
       }
     }
   }
 }
+
