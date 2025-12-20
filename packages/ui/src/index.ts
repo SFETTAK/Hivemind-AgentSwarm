@@ -3,5 +3,5 @@
 
 export * from './stores'
 export * from './hooks'
-// Components will be exported individually to allow tree-shaking
+export * from './components'
 

@@ -12,7 +12,7 @@ export interface Agent {
   task: string
   icon: string
   color: string
-  status: 'active' | 'idle' | 'error' | 'stopped'
+  status: 'active' | 'idle' | 'error' | 'stopped' | 'offline'
   model: string
   runtime: number
 }
