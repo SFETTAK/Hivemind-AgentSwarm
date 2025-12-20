@@ -7,6 +7,9 @@ import type { SettingsManager } from '@hivemind/config'
 import { getAgents, sendKeys, getAgentActivity } from '@hivemind/connectors'
 import { AGENT_DEFINITIONS } from '@hivemind/core'
 
+// Track when the swarm was started (first agent deployed or server start)
+let swarmStartTime = Date.now()
+
 export function createSwarmRoutes(settings: SettingsManager): Router {
   const router = Router()
   
@@ -62,6 +65,9 @@ export function createSwarmRoutes(settings: SettingsManager): Router {
         }))
       ]
       
+      // Calculate uptime in seconds since server started
+      const uptimeSeconds = Math.floor((Date.now() - swarmStartTime) / 1000)
+      
       res.json({
         agents,
         edges,
@@ -70,7 +76,7 @@ export function createSwarmRoutes(settings: SettingsManager): Router {
           totalAgents: agents.length,
           messagesExchanged: 0, // TODO: track this
           tasksCompleted: 0,
-          uptime: 0,
+          uptime: uptimeSeconds,
         },
       })
     } catch (e: any) {
