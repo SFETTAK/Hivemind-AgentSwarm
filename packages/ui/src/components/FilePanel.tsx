@@ -551,10 +551,26 @@ function FilePanelComponent({ apiBase }: FilePanelProps) {
     if (typeof window === 'undefined') return 'files'
     return (localStorage.getItem('hivemind-filepanel-tab') as TabId) || 'files'
   })
-  const [projectDir, setProjectDir] = useState(() => {
-    if (typeof window === 'undefined') return '/home/blastly/hivemind-refactor'
-    return localStorage.getItem('hivemind-project-dir') || '/home/blastly/hivemind-refactor'
-  })
+  // Default to user's home directory + Hivemind-AgentSwarm (the install location)
+  const defaultDir = typeof window !== 'undefined' 
+    ? (localStorage.getItem('hivemind-project-dir') || '')
+    : ''
+  const [projectDir, setProjectDir] = useState(defaultDir)
+  
+  // Fetch project directory from settings on mount if not set
+  useEffect(() => {
+    if (!projectDir) {
+      fetch(`${apiBase}/api/settings`)
+        .then(res => res.json())
+        .then(data => {
+          if (data.projectDir) {
+            setProjectDir(data.projectDir)
+            localStorage.setItem('hivemind-project-dir', data.projectDir)
+          }
+        })
+        .catch(() => {})
+    }
+  }, [apiBase, projectDir])
   
   const handleTabChange = (tab: TabId) => {
     setActiveTab(tab)
