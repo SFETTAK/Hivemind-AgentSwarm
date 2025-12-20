@@ -49,6 +49,52 @@ export async function createServer(config: ServerConfig): Promise<{ app: express
   app.use('/api/swarm', createSwarmRoutes(settings))
   app.use('/api/files', createFilesRoutes(settings))
   
+  // Legacy compatibility endpoints for UI
+  const { getAgents } = require('@hivemind/connectors')
+  const cfg = settings.get()
+  
+  // GET /api/edges - UI expects separate edges endpoint
+  app.get('/api/edges', async (req, res) => {
+    try {
+      const agents = await getAgents(cfg.tmuxPrefix)
+      // Build proper edge structure: USER -> QUEEN -> workers
+      const edges = [
+        // User to Queen
+        { source: 'user', target: 'queen', active: true },
+        // Queen to all workers
+        ...agents.map((a: any) => ({
+          source: 'queen',
+          target: a.id,
+          active: a.status === 'active',
+        }))
+      ]
+      res.json({ edges })
+    } catch (e: any) {
+      res.json({ edges: [] })
+    }
+  })
+  
+  // GET /api/stats - UI expects stats endpoint
+  app.get('/api/stats', async (req, res) => {
+    try {
+      const agents = await getAgents(cfg.tmuxPrefix)
+      res.json({
+        agentCount: agents.length,
+        messageCount: 0,
+        cost: '$0.00',
+        runtime: '0s',
+      })
+    } catch (e: any) {
+      res.json({ agentCount: 0, messageCount: 0, cost: '$0.00', runtime: '0s' })
+    }
+  })
+  
+  // GET /api/messages - UI expects messages endpoint
+  app.get('/api/messages', async (req, res) => {
+    // Return empty messages for now - could read from a log file later
+    res.json({ messages: '' })
+  })
+  
   // Legacy compatibility routes
   app.get('/api/activity', async (req, res) => {
     // Redirect to swarm activity

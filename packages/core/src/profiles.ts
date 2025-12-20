@@ -25,6 +25,7 @@ export const DEFAULT_PROFILES: Record<SpeedLevel, ModelProfile> = {
       oracle: 'openrouter/openai/gpt-4o-mini',
       nexus: 'openrouter/openai/gpt-4o-mini',
       scribe: 'openrouter/google/gemini-2.0-flash-001',
+      conductor: 'openrouter/anthropic/claude-sonnet-4',
     },
   },
   2: {
@@ -38,6 +39,7 @@ export const DEFAULT_PROFILES: Record<SpeedLevel, ModelProfile> = {
       oracle: 'openrouter/anthropic/claude-3-5-haiku',
       nexus: 'openrouter/anthropic/claude-3-5-haiku',
       scribe: 'openrouter/anthropic/claude-3-5-haiku',
+      conductor: 'openrouter/anthropic/claude-sonnet-4',
     },
   },
   3: {
@@ -51,6 +53,7 @@ export const DEFAULT_PROFILES: Record<SpeedLevel, ModelProfile> = {
       oracle: 'openrouter/anthropic/claude-sonnet-4',
       nexus: 'openrouter/anthropic/claude-sonnet-4',
       scribe: 'openrouter/anthropic/claude-sonnet-4',
+      conductor: 'openrouter/anthropic/claude-opus-4.5',
     },
   },
   4: {
@@ -64,6 +67,7 @@ export const DEFAULT_PROFILES: Record<SpeedLevel, ModelProfile> = {
       oracle: 'openrouter/anthropic/claude-opus-4.5',
       nexus: 'openrouter/anthropic/claude-opus-4.5',
       scribe: 'openrouter/anthropic/claude-opus-4.5',
+      conductor: 'openrouter/anthropic/claude-opus-4.5',
     },
   },
 }

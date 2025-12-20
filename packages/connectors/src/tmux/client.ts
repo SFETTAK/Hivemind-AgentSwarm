@@ -211,9 +211,7 @@ export async function spawnAgent(
     status: 'active',
     model: config.model,
     task,
-    runtime: {
-      startedAt: new Date().toISOString(),
-    },
+    runtime: 0, // Just spawned
   }
   
   return { sessionName, agent }
@@ -248,6 +246,15 @@ export async function getAgents(prefix = 'hive'): Promise<Agent[]> {
       status = 'idle'
     }
     
+    // Calculate runtime in seconds from session creation time
+    let runtimeSeconds = 0
+    if (session.created) {
+      const startTime = parseInt(session.created, 10) * 1000 // tmux returns unix timestamp
+      if (!isNaN(startTime)) {
+        runtimeSeconds = Math.floor((Date.now() - startTime) / 1000)
+      }
+    }
+    
     agents.push({
       id: session.name,
       shortName: session.name.replace(`${prefix}-`, ''),
@@ -257,10 +264,8 @@ export async function getAgents(prefix = 'hive'): Promise<Agent[]> {
       color: def.color,
       status,
       task: parsed.task,
-      runtime: {
-        startedAt: session.created,
-        lastActivity: new Date().toISOString(),
-      },
+      model: '', // Will be populated from settings if available
+      runtime: runtimeSeconds,
     })
   }
   

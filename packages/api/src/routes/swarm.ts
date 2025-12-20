@@ -15,16 +15,52 @@ export function createSwarmRoutes(settings: SettingsManager): Router {
     const cfg = settings.get()
     
     try {
-      const agents = await getAgents(cfg.tmuxPrefix)
+      const tmuxAgents = await getAgents(cfg.tmuxPrefix)
       
-      // Build edges (conductor connects to all)
-      const edges = agents
-        .filter(a => a.role !== 'conductor')
-        .map(a => ({
-          source: 'user-entry',
+      // Add permanent nodes: USER and QUEEN
+      // These always exist in the topology regardless of tmux sessions
+      const userNode = {
+        id: 'user',
+        shortName: 'user',
+        role: 'user' as const,
+        name: 'USER',
+        icon: '👤',
+        color: '#60a5fa', // blue
+        status: 'active' as const,
+        model: '',
+        task: 'Human operator',
+        runtime: 0,
+      }
+      
+      const queenNode = {
+        id: 'queen',
+        shortName: 'queen',
+        role: 'conductor' as const,
+        name: 'QUEEN',
+        icon: '👑',
+        color: '#fbbf24', // amber/gold
+        status: 'active' as const,
+        model: cfg.profiles?.[cfg.speedLevel]?.models?.conductor || 'anthropic/claude-sonnet',
+        task: 'Swarm orchestration',
+        runtime: 0,
+      }
+      
+      // Combine: USER + QUEEN + tmux agents
+      const agents = [userNode, queenNode, ...tmuxAgents]
+      
+      // Build edges:
+      // - USER connects to QUEEN
+      // - QUEEN connects to all worker agents
+      const edges = [
+        // User -> Queen connection
+        { source: 'user', target: 'queen', active: true },
+        // Queen -> all workers
+        ...tmuxAgents.map(a => ({
+          source: 'queen',
           target: a.id,
           active: a.status === 'active',
         }))
+      ]
       
       res.json({
         agents,

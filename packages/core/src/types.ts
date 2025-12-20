@@ -22,11 +22,7 @@ export interface Agent {
   status: AgentStatus
   model?: string          // LLM model being used
   task?: string           // Current task description
-  runtime?: {
-    pid?: number
-    startedAt?: string
-    lastActivity?: string
-  }
+  runtime: number         // Seconds since agent started
 }
 
 export interface AgentConfig {
@@ -93,6 +89,7 @@ export interface ModelProfile {
     oracle: string
     nexus: string
     scribe: string
+    conductor: string
   }
 }
 

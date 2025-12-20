@@ -19,10 +19,40 @@ export function createAgentRoutes(settings: SettingsManager): Router {
   const router = Router()
   const config = settings.get()
   
-  // List all agents
+  // List all agents (including permanent USER and QUEEN nodes)
   router.get('/', async (req, res) => {
     try {
-      const agents = await getAgents(config.tmuxPrefix)
+      const cfg = settings.get()
+      const tmuxAgents = await getAgents(cfg.tmuxPrefix)
+      
+      // Permanent nodes that always exist
+      const userNode = {
+        id: 'user',
+        shortName: 'user',
+        role: 'user',
+        name: 'USER',
+        icon: '👤',
+        color: '#60a5fa',
+        status: 'active',
+        model: '',
+        task: 'Human operator',
+        runtime: 0,
+      }
+      
+      const queenNode = {
+        id: 'queen',
+        shortName: 'queen',
+        role: 'conductor',
+        name: 'QUEEN',
+        icon: '👑',
+        color: '#fbbf24',
+        status: 'active',
+        model: cfg.profiles?.[cfg.speedLevel]?.models?.conductor || 'anthropic/claude-sonnet',
+        task: 'Swarm orchestration',
+        runtime: 0,
+      }
+      
+      const agents = [userNode, queenNode, ...tmuxAgents]
       res.json({ agents })
     } catch (e: any) {
       res.status(500).json({ error: e.message })
@@ -81,12 +111,18 @@ export function createAgentRoutes(settings: SettingsManager): Router {
   
   // Send command to agent
   router.post('/:name/send', async (req, res) => {
-    const { command } = req.body
+    // Accept both 'command' and 'message' for flexibility
+    const { command, message } = req.body
+    const text = command || message
     const name = req.params.name
     const sessionName = name.startsWith(`${config.tmuxPrefix}-`) ? name : `${config.tmuxPrefix}-${name}`
     
+    if (!text) {
+      return res.status(400).json({ success: false, error: 'No command or message provided' })
+    }
+    
     try {
-      await sendKeys(sessionName, command)
+      await sendKeys(sessionName, text)
       res.json({ success: true, message: `Command sent to ${sessionName}` })
     } catch (e: any) {
       res.status(500).json({ success: false, error: e.message })

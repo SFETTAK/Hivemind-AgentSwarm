@@ -18,8 +18,8 @@ import {
   type Agent,
 } from '@hivemind/ui'
 
-// API base URL - configurable
-const API_BASE = 'http://192.168.1.133:3001'
+// API base URL - configurable via environment variable
+const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:3001'
 
 // Start polling for swarm data
 startPolling(API_BASE)
@@ -391,7 +391,7 @@ export default function App() {
       </main>
       
       <footer className="text-center text-xs text-zinc-600 py-1 flex items-center justify-center gap-4">
-        <span>© 2025 · Hivemind Swarm Dashboard</span>
+        <span>© 2025 Steven Fett · Hivemind Swarm Dashboard</span>
         <button 
           onClick={() => {
             resetLayout()
