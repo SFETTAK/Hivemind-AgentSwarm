@@ -281,6 +281,27 @@ echo   (c) 2024-2025 Steven Fett ^& Contributors
 echo   MIT License
 echo.
 echo  ----------------------------------------
+echo.
+echo  ========================================
+echo  =   TROUBLESHOOTING                    =
+echo  ========================================
+echo.
+echo   If http://localhost:5173 doesn't work:
+echo.
+echo   1. Open Ubuntu from Start Menu
+echo   2. Type these commands:
+echo.
+echo      cd ~/Hivemind-AgentSwarm
+echo      hivemind
+echo.
+echo   3. Wait for "Dashboard running on..."
+echo   4. Then open http://localhost:5173
+echo.
+echo   Still not working? Try:
+echo      cd ~/Hivemind-AgentSwarm
+echo      pnpm start
+echo.
+echo  ----------------------------------------
 
 :: Ask if they want to start now
 echo.
@@ -291,6 +312,11 @@ if /i "%STARTNOW%"=="no" goto :done
 :: Start it
 echo.
 echo  Starting Hivemind...
+echo.
+echo  ****************************************
+echo  *   KEEP THIS WINDOW OPEN!            *
+echo  *   Closing it will stop Hivemind.    *
+echo  ****************************************
 echo.
 wsl -d Ubuntu -- bash -l -c hivemind
 
